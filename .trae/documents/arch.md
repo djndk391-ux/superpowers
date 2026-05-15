@@ -6,9 +6,11 @@ graph TB
     Backend -->|FFmpeg| VideoProcessor[Video Processing]
     Backend -->|Whisper| SpeechRecognition[Speech Recognition]
     Backend -->|MoviePy| VideoEditing[Video Editing]
+    Backend -->|AI Analysis| BenchmarkAnalyzer[对标视频分析器]
     Frontend -->|Local Storage| State[Zustand State]
     Frontend -->|Video Preview| Player[HTML5 Video Player]
     VideoEditing -->|Export| Output[MP4/MOV Files]
+    BenchmarkAnalyzer -->|技巧应用| VideoEditing
 ```
 
 ## 2. Technology Description
@@ -25,6 +27,7 @@ graph TB
 | Route | Purpose |
 |-------|---------|
 | / | 视频导入页 - 首页 |
+| /benchmark | 对标视频分析页 |
 | /editor | 智能剪辑页 |
 | /subtitles | 字幕生成页 |
 | /materials | 素材匹配页 |
@@ -113,6 +116,50 @@ interface ExportRequest {
 interface ExportResponse {
   downloadUrl: string;
   estimatedTime: number;
+}
+
+// 对标视频上传接口
+interface UploadBenchmarkRequest {
+  file: File;
+}
+
+interface UploadBenchmarkResponse {
+  benchmarkId: string;
+  filePath: string;
+  duration: number;
+  fileName: string;
+}
+
+// 对标视频分析接口
+interface AnalyzeBenchmarkRequest {
+  benchmarkId: string;
+}
+
+interface AnalyzeBenchmarkResponse {
+  analysisId: string;
+  status: 'processing' | 'completed' | 'failed';
+  result?: {
+    cutPoints: Array<{ time: number; type: string }>;
+    rhythmData: Array<{ time: number; intensity: number }>;
+    subtitleStyle: SubtitleStyle;
+    transitions: string[];
+    tips: string[];
+  };
+}
+
+// 应用对标技巧接口
+interface ApplyBenchmarkRequest {
+  videoId: string;
+  benchmarkId: string;
+  applyCutPoints: boolean;
+  applyRhythm: boolean;
+  applySubtitleStyle: boolean;
+  applyTransitions: boolean;
+}
+
+interface ApplyBenchmarkResponse {
+  success: boolean;
+  jobId: string;
 }
 ```
 

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Upload, X, FileVideo, CheckCircle2 } from 'lucide-react';
+import { Upload, X, FileVideo, CheckCircle2, Video, ArrowRight, Sparkles } from 'lucide-react';
 import { useVideoStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 
@@ -56,12 +56,6 @@ const ImportPage = () => {
         setVideo(file, url, video.duration, file.name);
       };
     }, 2000);
-  };
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -147,12 +141,22 @@ const ImportPage = () => {
                 </button>
               </div>
               {uploadProgress >= 100 && (
-                <button
-                  onClick={() => navigate('/editor')}
-                  className="w-full py-4 bg-gradient-to-r from-primary to-secondary rounded-xl font-medium text-lg hover:shadow-lg hover:shadow-primary/25 transition-all duration-300"
-                >
-                  开始 AI 智能剪辑
-                </button>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => navigate('/editor')}
+                    className="py-4 bg-dark-700 rounded-xl font-medium text-lg hover:bg-dark-600 transition-all"
+                  >
+                    直接剪辑
+                  </button>
+                  <button
+                    onClick={() => navigate('/benchmark')}
+                    className="py-4 bg-gradient-to-r from-primary to-secondary rounded-xl font-medium text-lg hover:shadow-lg hover:shadow-primary/25 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Sparkles className="w-5 h-5" />
+                    使用对标视频
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                </div>
               )}
             </div>
           )}

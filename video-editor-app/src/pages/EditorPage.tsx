@@ -10,6 +10,8 @@ import {
   Zap,
   Trash2,
   ArrowRight,
+  Sparkles,
+  CheckCircle2,
 } from 'lucide-react';
 import { useVideoStore, VideoSegment } from '../store';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +28,8 @@ const EditorPage = () => {
     toggleSegment,
     isAnalyzing,
     setAnalyzing,
+    benchmarkAnalysis,
+    benchmarkFileName,
   } = useVideoStore();
   const navigate = useNavigate();
 
@@ -163,7 +167,16 @@ const EditorPage = () => {
         <div className="flex-1 flex flex-col">
           <div className="p-6 border-b border-dark-700">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-orbitron font-bold">智能剪辑</h1>
+              <div className="flex items-center gap-4">
+                <h1 className="text-2xl font-orbitron font-bold">智能剪辑</h1>
+                {benchmarkAnalysis && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-xl border border-primary/30">
+                    <Sparkles className="w-4 h-4 text-secondary" />
+                    <span className="text-sm">已应用对标视频剪辑技巧</span>
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => navigate('/subtitles')}
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-secondary rounded-xl font-medium hover:shadow-lg hover:shadow-primary/25 transition-all"
@@ -312,12 +325,18 @@ const EditorPage = () => {
                   )}
                 </span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm mb-4">
                 <span className="text-gray-400">已移除片段</span>
                 <span className="text-secondary">
                   {segments.filter(s => s.isRemoved).length} 个
                 </span>
               </div>
+              {benchmarkAnalysis && (
+                <div className="p-3 bg-dark-700/50 rounded-lg text-xs text-gray-400">
+                  <p className="mb-1">📌 对标视频剪辑技巧已应用</p>
+                  <p className="text-gray-500">{benchmarkFileName}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

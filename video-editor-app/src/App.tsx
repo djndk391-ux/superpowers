@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ImportPage from "@/pages/ImportPage";
+import BenchmarkPage from "@/pages/BenchmarkPage";
 import EditorPage from "@/pages/EditorPage";
 import SubtitlesPage from "@/pages/SubtitlesPage";
 import MaterialsPage from "@/pages/MaterialsPage";
@@ -10,6 +11,7 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<ImportPage />} />
+        <Route path="/benchmark" element={<BenchmarkPage />} />
         <Route path="/editor" element={<EditorPage />} />
         <Route path="/subtitles" element={<SubtitlesPage />} />
         <Route path="/materials" element={<MaterialsPage />} />
