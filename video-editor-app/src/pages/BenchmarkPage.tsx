@@ -7,11 +7,13 @@ import {
   Zap,
   Check,
   ArrowRight,
-  Eye,
   Play,
   Pause,
   Sparkles,
   Info,
+  Upload,
+  Link,
+  X,
 } from 'lucide-react';
 import { useVideoStore } from '../store';
 import { useNavigate } from 'react-router-dom';
@@ -37,45 +39,62 @@ const BenchmarkPage = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isPlaying1, setIsPlaying1] = useState(false);
   const [isPlaying2, setIsPlaying2] = useState(false);
+  const [benchmarkVideoUrlInput, setBenchmarkVideoUrlInput] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const videoRef1 = useRef<HTMLVideoElement>(null);
   const videoRef2 = useRef<HTMLVideoElement>(null);
 
-  // 如果没有主视频，先回到首页
   if (!videoUrl) {
     navigate('/');
     return null;
   }
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files);
-    const videoFile = files.find(f => f.type.startsWith('video/'));
-    if (videoFile) {
-      processBenchmarkFile(videoFile);
-    }
-  };
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      processBenchmarkFile(file);
-    }
-  };
-
   const processBenchmarkFile = (file: File) => {
-    const url = URL.createObjectURL(file);
-    const video = document.createElement('video');
-    video.src = url;
-    video.onloadedmetadata = () => {
-      setBenchmark(file, url, video.duration, file.name);
-    };
+    setUploadProgress(0);
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 200);
+
+    setTimeout(() => {
+      const url = URL.createObjectURL(file);
+      const video = document.createElement('video');
+      video.src = url;
+      video.onloadedmetadata = () => {
+        setBenchmark(file, url, video.duration, file.name);
+      };
+    }, 2000);
+  };
+
+  const handleUrlSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (benchmarkVideoUrlInput.trim()) {
+      setUploadProgress(0);
+      const interval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
+      setTimeout(() => {
+        const fileName = benchmarkVideoUrlInput.split('/').pop() || `video-${Date.now()}`;
+        setBenchmark(null as any, benchmarkVideoUrlInput, 120, fileName);
+      }, 2000);
+    }
   };
 
   const startAnalysis = () => {
     setAnalyzingBenchmark(true);
     
-    // 模拟AI分析
     setTimeout(() => {
       const mockAnalysis = {
         cutPoints: [
@@ -135,333 +154,435 @@ const BenchmarkPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-dark-900 text-white font-space">
-      <div className="flex h-screen">
-        {/* 左侧：视频对比播放区域 */}
-        <div className="flex-1 flex flex-col p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-orbitron font-bold">对标视频分析</h1>
-            {benchmarkAnalysis && (
-              <button
-                onClick={() => navigate('/editor')}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-secondary rounded-xl font-medium hover:shadow-lg hover:shadow-primary/25 transition-all"
-              >
-                应用技巧并继续
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            )}
-          </div>
+    <div className="min-h-screen relative">
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/20 rounded-full blur-3xl floating"></div>
+        <div className="absolute top-1/2 -left-40 w-96 h-96 bg-secondary/15 rounded-full blur-3xl floating" style={{ animationDelay: '-3s' }}></div>
+      </div>
 
-          {/* 视频对比播放 */}
-          <div className="flex-1 flex flex-col gap-6 mb-6">
-            <div className="grid grid-cols-2 gap-6 h-1/2">
-              {/* 主视频 */}
-              <div className="bg-dark-800 rounded-2xl overflow-hidden relative">
-                <video
-                  ref={videoRef1}
-                  src={videoUrl}
-                  className="w-full h-full object-contain bg-black"
-                />
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                  <button
-                    onClick={togglePlay1}
-                    className="p-3 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
-                  >
-                    {isPlaying1 ? (
-                      <Pause className="w-6 h-6" />
-                    ) : (
-                      <Play className="w-6 h-6" />
-                    )}
-                  </button>
-                </div>
-                <div className="absolute top-4 left-4 bg-black/50 px-3 py-1 rounded-lg text-sm">
-                  你的视频
-                </div>
-              </div>
+      <div className="container mx-auto px-6 py-12 relative z-10">
+        <div className="text-center mb-10">
+          <h1 className="text-4xl md:text-5xl font-orbitron font-bold mb-4">
+            <span className="gradient-text">对标视频分析</span>
+          </h1>
+          <p className="text-gray-400 text-lg">
+            上传对标视频，让 AI 分析它的剪辑技巧
+          </p>
+        </div>
 
-              {/* 对标视频 */}
-              <div className="bg-dark-800 rounded-2xl overflow-hidden relative">
-                {benchmarkUrl ? (
-                  <>
-                    <video
-                      ref={videoRef2}
-                      src={benchmarkUrl}
-                      className="w-full h-full object-contain bg-black"
-                    />
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                      <button
-                        onClick={togglePlay2}
-                        className="p-3 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
-                      >
-                        {isPlaying2 ? (
-                          <Pause className="w-6 h-6" />
-                        ) : (
-                          <Play className="w-6 h-6" />
-                        )}
-                      </button>
-                    </div>
-                    <div className="absolute top-4 left-4 bg-gradient-to-r from-primary to-secondary px-3 py-1 rounded-lg text-sm">
-                      对标视频
-                    </div>
-                  </>
-                ) : (
+        <div className="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+          <div className="lg:col-span-2 space-y-6">
+            {!benchmarkUrl ? (
+              <div className="glass-card rounded-3xl p-8">
+                <div className="text-center mb-8">
+                  <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-4">
+                    <Sparkles className="w-10 h-10 text-primary" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-white mb-2">上传对标视频</h2>
+                  <p className="text-gray-400">选择或拖放您想要学习的视频</p>
+                </div>
+
+                <div className="space-y-6">
                   <div
-                    className={`h-full flex flex-col items-center justify-center cursor-pointer transition-all ${
-                      isDragging
-                        ? 'bg-primary/10 border-2 border-primary border-dashed'
-                        : 'hover:bg-dark-700 border-2 border-dashed border-dark-600'
-                    }`}
+                    className={`relative upload-zone rounded-2xl p-10 text-center cursor-pointer ${isDragging ? 'dragging' : ''}`}
                     onDragOver={(e) => {
                       e.preventDefault();
                       setIsDragging(true);
                     }}
                     onDragLeave={() => setIsDragging(false)}
-                    onDrop={handleDrop}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      const files = Array.from(e.dataTransfer.files);
+                      const videoFile = files.find(f => f.type.startsWith('video/'));
+                      if (videoFile) {
+                        processBenchmarkFile(videoFile);
+                      }
+                    }}
                   >
                     <input
                       type="file"
                       accept="video/*"
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      onChange={handleFileInput}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) processBenchmarkFile(file);
+                      }}
                     />
-                    <Video className="w-16 h-16 text-gray-500 mb-4" />
-                    <p className="text-gray-400 text-center mb-2">
-                      拖放对标视频到这里
-                    </p>
-                    <p className="text-gray-500 text-sm">
-                      或点击选择文件
-                    </p>
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Upload className="w-10 h-10 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-gray-200 text-lg font-medium">拖放视频文件到这里</p>
+                        <p className="text-gray-500 text-sm mt-1">或点击选择文件</p>
+                      </div>
+                    </div>
                   </div>
-                )}
+
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent"></div>
+                    <span className="text-gray-500 text-sm">或通过链接导入</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent"></div>
+                  </div>
+
+                  <form onSubmit={handleUrlSubmit} className="space-y-3">
+                    <div className="relative">
+                      <Link className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                      <input
+                        type="url"
+                        value={benchmarkVideoUrlInput}
+                        onChange={(e) => setBenchmarkVideoUrlInput(e.target.value)}
+                        placeholder="粘贴对标视频链接地址..."
+                        className="input-field w-full pl-12 pr-4 py-4 rounded-xl text-white placeholder-gray-500"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={!benchmarkVideoUrlInput.trim()}
+                      className="w-full py-4 bg-dark-700 hover:bg-dark-600 rounded-xl font-medium text-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      <Link className="w-5 h-5" />
+                      从链接导入
+                    </button>
+                  </form>
+                </div>
               </div>
-            </div>
+            ) : !benchmarkAnalysis ? (
+              <div className="glass-card rounded-3xl p-8">
+                <div className="grid md:grid-cols-2 gap-6 mb-8">
+                  <div className="bg-dark-800/50 rounded-2xl overflow-hidden relative">
+                    <video
+                      ref={videoRef1}
+                      src={videoUrl}
+                      className="w-full aspect-video object-cover bg-black"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <button
+                        onClick={togglePlay1}
+                        className="p-4 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+                      >
+                        {isPlaying1 ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
+                      </button>
+                    </div>
+                    <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-lg text-sm">
+                      您的视频
+                    </div>
+                  </div>
 
-            {/* 分析按钮 */}
-            {benchmarkUrl && !benchmarkAnalysis && (
-              <div className="flex justify-center">
-                <button
-                  onClick={startAnalysis}
-                  disabled={isAnalyzingBenchmark}
-                  className="px-8 py-4 bg-gradient-to-r from-primary to-secondary rounded-xl font-medium text-lg hover:shadow-lg hover:shadow-primary/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
-                >
-                  {isAnalyzingBenchmark ? (
-                    <>
-                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      AI 正在分析剪辑技巧...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-6 h-6" />
-                      开始分析对标视频
-                    </>
-                  )}
-                </button>
+                  <div className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl overflow-hidden relative border border-primary/20">
+                    <video
+                      ref={videoRef2}
+                      src={benchmarkUrl}
+                      className="w-full aspect-video object-cover bg-black"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <button
+                        onClick={togglePlay2}
+                        className="p-4 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+                      >
+                        {isPlaying2 ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
+                      </button>
+                    </div>
+                    <div className="absolute top-4 left-4 bg-gradient-to-r from-primary to-secondary px-3 py-1 rounded-lg text-sm">
+                      对标视频
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <button
+                    onClick={startAnalysis}
+                    disabled={isAnalyzingBenchmark}
+                    className="px-10 py-5 btn-primary rounded-2xl font-semibold text-lg text-white flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isAnalyzingBenchmark ? (
+                      <>
+                        <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        AI 正在分析剪辑技巧...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-6 h-6" />
+                        开始分析对标视频
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
-            )}
+            ) : (
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="glass-card rounded-2xl overflow-hidden">
+                    <video
+                      ref={videoRef1}
+                      src={videoUrl}
+                      className="w-full aspect-video object-cover bg-black"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <button
+                        onClick={togglePlay1}
+                        className="p-4 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+                      >
+                        {isPlaying1 ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
+                      </button>
+                    </div>
+                    <div className="p-4 bg-dark-800/80 backdrop-blur-sm">
+                      <p className="text-sm text-gray-400">您的视频</p>
+                    </div>
+                  </div>
 
-            {/* 分析结果展示 */}
-            {benchmarkAnalysis && (
-              <div className="bg-dark-800 rounded-2xl p-6">
-                <h3 className="text-lg font-medium mb-6 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-secondary" />
-                  剪辑技巧分析报告
-                </h3>
+                  <div className="glass-card rounded-2xl overflow-hidden border border-primary/20">
+                    <video
+                      ref={videoRef2}
+                      src={benchmarkUrl}
+                      className="w-full aspect-video object-cover bg-black"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <button
+                        onClick={togglePlay2}
+                        className="p-4 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+                      >
+                        {isPlaying2 ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
+                      </button>
+                    </div>
+                    <div className="p-4 bg-gradient-to-r from-primary/20 to-secondary/20">
+                      <p className="text-sm text-gray-300">对标视频</p>
+                    </div>
+                  </div>
+                </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                  {/* 剪辑点分析 */}
-                  <div className="bg-dark-700/50 rounded-xl p-4">
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-primary" />
-                      关键剪辑点
+                <div className="glass-card rounded-2xl p-6">
+                  <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <TrendingUp className="w-6 h-6 text-secondary" />
+                    剪辑技巧分析报告
+                  </h3>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="bg-dark-800/50 rounded-xl p-5">
+                      <h4 className="font-medium mb-4 flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-primary" />
+                        关键剪辑点
+                      </h4>
+                      <div className="space-y-2">
+                        {benchmarkAnalysis.cutPoints.map((point, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-3 bg-dark-700/50 rounded-lg">
+                            <span className="text-gray-400 font-mono">{formatTime(point.time)}</span>
+                            <span className="text-primary text-sm font-medium">{point.type}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-dark-800/50 rounded-xl p-5">
+                      <h4 className="font-medium mb-4 flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-secondary" />
+                        节奏强度曲线
+                      </h4>
+                      <div className="h-28 flex items-end gap-1">
+                        {benchmarkAnalysis.rhythmData.map((data, idx) => (
+                          <div
+                            key={idx}
+                            className="flex-1 bg-gradient-to-t from-primary to-secondary rounded-t transition-all hover:opacity-80"
+                            style={{ height: `${data.intensity * 100}%` }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-dark-800/50 rounded-xl p-5">
+                      <h4 className="font-medium mb-4 flex items-center gap-2">
+                        <Video className="w-5 h-5 text-primary" />
+                        使用的转场方式
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {benchmarkAnalysis.transitions.map((trans, idx) => (
+                          <span
+                            key={idx}
+                            className="px-4 py-2 bg-primary/20 text-primary rounded-full text-sm font-medium"
+                          >
+                            {trans}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-dark-800/50 rounded-xl p-5">
+                      <h4 className="font-medium mb-4 flex items-center gap-2">
+                        <Type className="w-5 h-5 text-secondary" />
+                        字幕风格
+                      </h4>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between p-3 bg-dark-700/50 rounded-lg">
+                          <span className="text-gray-400">字体大小</span>
+                          <span className="text-white">{benchmarkAnalysis.subtitleStyle.fontSize}px</span>
+                        </div>
+                        <div className="flex justify-between p-3 bg-dark-700/50 rounded-lg">
+                          <span className="text-gray-400">位置</span>
+                          <span className="text-white">
+                            {benchmarkAnalysis.subtitleStyle.position === 'top'
+                              ? '顶部'
+                              : benchmarkAnalysis.subtitleStyle.position === 'center'
+                              ? '居中'
+                              : '底部'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl p-6 border border-primary/20">
+                    <h4 className="font-medium mb-4 flex items-center gap-2">
+                      <Info className="w-5 h-5 text-secondary" />
+                      剪辑建议
                     </h4>
-                    <div className="space-y-2">
-                      {benchmarkAnalysis.cutPoints.map((point, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-sm">
-                          <span className="text-gray-400">{formatTime(point.time)}</span>
-                          <span className="text-primary">{point.type}</span>
+                    <div className="space-y-3">
+                      {benchmarkAnalysis.tips.map((tip, idx) => (
+                        <div key={idx} className="flex items-start gap-3 p-3 bg-dark-800/50 rounded-lg">
+                          <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Check className="w-3.5 h-3.5 text-green-500" />
+                          </div>
+                          <p className="text-gray-300">{tip}</p>
                         </div>
                       ))}
                     </div>
                   </div>
-
-                  {/* 节奏曲线 */}
-                  <div className="bg-dark-700/50 rounded-xl p-4">
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-secondary" />
-                      节奏强度曲线
-                    </h4>
-                    <div className="h-24 flex items-end gap-1">
-                      {benchmarkAnalysis.rhythmData.map((data, idx) => (
-                        <div
-                          key={idx}
-                          className="flex-1 bg-gradient-to-t from-primary to-secondary rounded-t transition-all hover:opacity-80"
-                          style={{ height: `${data.intensity * 100}%` }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 转场方式 */}
-                  <div className="bg-dark-700/50 rounded-xl p-4">
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <Video className="w-4 h-4 text-primary" />
-                      使用的转场方式
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {benchmarkAnalysis.transitions.map((trans, idx) => (
-                        <span
-                          key={idx}
-                          className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm"
-                        >
-                          {trans}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 字幕风格 */}
-                  <div className="bg-dark-700/50 rounded-xl p-4">
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <Type className="w-4 h-4 text-secondary" />
-                      字幕风格
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">字体大小</span>
-                        <span>{benchmarkAnalysis.subtitleStyle.fontSize}px</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">位置</span>
-                        <span>
-                          {benchmarkAnalysis.subtitleStyle.position === 'top'
-                            ? '顶部'
-                            : benchmarkAnalysis.subtitleStyle.position === 'center'
-                            ? '居中'
-                            : '底部'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 剪辑建议 */}
-                <div className="mt-6 bg-dark-700/50 rounded-xl p-4">
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <Info className="w-4 h-4 text-secondary" />
-                    剪辑建议
-                  </h4>
-                  <div className="space-y-2">
-                    {benchmarkAnalysis.tips.map((tip, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-gray-300">{tip}</p>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               </div>
             )}
+
+            {benchmarkUrl && benchmarkAnalysis && (
+              <button
+                onClick={() => navigate('/editor')}
+                className="w-full py-5 btn-secondary rounded-2xl font-semibold text-lg text-white flex items-center justify-center gap-3"
+              >
+                应用技巧并继续
+                <ArrowRight className="w-6 h-6" />
+              </button>
+            )}
           </div>
-        </div>
 
-        {/* 右侧：对标技巧应用设置 */}
-        {benchmarkAnalysis && (
-          <div className="w-80 border-l border-dark-700 flex flex-col">
-            <div className="p-6 border-b border-dark-700">
-              <h2 className="text-lg font-medium flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-secondary" />
-                应用对标技巧
-              </h2>
-            </div>
+          {benchmarkAnalysis && (
+            <div className="lg:col-span-1">
+              <div className="glass-card rounded-3xl p-6 sticky top-6">
+                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                  <Sparkles className="w-6 h-6 text-secondary" />
+                  应用对标技巧
+                </h2>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <label className="flex items-center justify-between p-4 bg-dark-800 rounded-xl cursor-pointer hover:bg-dark-700/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-primary" />
-                  <span>应用剪辑点</span>
+                <div className="space-y-4">
+                  <label className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl cursor-pointer hover:bg-dark-800/70 transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">应用剪辑点</p>
+                        <p className="text-xs text-gray-500">自动识别最佳剪辑位置</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => updateBenchmarkApplySettings({ applyCutPoints: !applyBenchmarkCutPoints })}
+                      className={`w-14 h-8 rounded-full transition-all relative ${
+                        applyBenchmarkCutPoints ? 'bg-gradient-to-r from-primary to-secondary' : 'bg-dark-700'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${
+                          applyBenchmarkCutPoints ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </label>
+
+                  <label className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl cursor-pointer hover:bg-dark-800/70 transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
+                        <Zap className="w-5 h-5 text-secondary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">应用节奏模式</p>
+                        <p className="text-xs text-gray-500">匹配视频节奏曲线</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => updateBenchmarkApplySettings({ applyRhythm: !applyBenchmarkRhythm })}
+                      className={`w-14 h-8 rounded-full transition-all relative ${
+                        applyBenchmarkRhythm ? 'bg-gradient-to-r from-primary to-secondary' : 'bg-dark-700'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${
+                          applyBenchmarkRhythm ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </label>
+
+                  <label className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl cursor-pointer hover:bg-dark-800/70 transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Type className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">应用字幕风格</p>
+                        <p className="text-xs text-gray-500">字体大小和位置</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => updateBenchmarkApplySettings({ applySubtitleStyle: !applyBenchmarkSubtitleStyle })}
+                      className={`w-14 h-8 rounded-full transition-all relative ${
+                        applyBenchmarkSubtitleStyle ? 'bg-gradient-to-r from-primary to-secondary' : 'bg-dark-700'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${
+                          applyBenchmarkSubtitleStyle ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </label>
+
+                  <label className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl cursor-pointer hover:bg-dark-800/70 transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
+                        <Video className="w-5 h-5 text-secondary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">应用转场效果</p>
+                        <p className="text-xs text-gray-500">匹配转场方式</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => updateBenchmarkApplySettings({ applyTransitions: !applyBenchmarkTransitions })}
+                      className={`w-14 h-8 rounded-full transition-all relative ${
+                        applyBenchmarkTransitions ? 'bg-gradient-to-r from-primary to-secondary' : 'bg-dark-700'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${
+                          applyBenchmarkTransitions ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </label>
+
+                  <div className="p-4 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl border border-primary/20">
+                    <div className="flex items-start gap-3">
+                      <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-gray-300">
+                        💡 建议首次尝试开启全部选项，效果更佳
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <button
-                  onClick={() => updateBenchmarkApplySettings({ applyCutPoints: !applyBenchmarkCutPoints })}
-                  className={`w-12 h-6 rounded-full transition-colors ${
-                    applyBenchmarkCutPoints ? 'bg-primary' : 'bg-dark-600'
-                  }`}
-                >
-                  <div
-                    className={`w-5 h-5 bg-white rounded-full mt-0.5 transition-transform ${
-                      applyBenchmarkCutPoints ? 'ml-6' : 'ml-1'
-                    }`}
-                  />
-                </button>
-              </label>
-
-              <label className="flex items-center justify-between p-4 bg-dark-800 rounded-xl cursor-pointer hover:bg-dark-700/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Zap className="w-5 h-5 text-secondary" />
-                  <span>应用节奏模式</span>
-                </div>
-                <button
-                  onClick={() => updateBenchmarkApplySettings({ applyRhythm: !applyBenchmarkRhythm })}
-                  className={`w-12 h-6 rounded-full transition-colors ${
-                    applyBenchmarkRhythm ? 'bg-secondary' : 'bg-dark-600'
-                  }`}
-                >
-                  <div
-                    className={`w-5 h-5 bg-white rounded-full mt-0.5 transition-transform ${
-                      applyBenchmarkRhythm ? 'ml-6' : 'ml-1'
-                    }`}
-                  />
-                </button>
-              </label>
-
-              <label className="flex items-center justify-between p-4 bg-dark-800 rounded-xl cursor-pointer hover:bg-dark-700/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Type className="w-5 h-5 text-primary" />
-                  <span>应用字幕风格</span>
-                </div>
-                <button
-                  onClick={() => updateBenchmarkApplySettings({ applySubtitleStyle: !applyBenchmarkSubtitleStyle })}
-                  className={`w-12 h-6 rounded-full transition-colors ${
-                    applyBenchmarkSubtitleStyle ? 'bg-primary' : 'bg-dark-600'
-                  }`}
-                >
-                  <div
-                    className={`w-5 h-5 bg-white rounded-full mt-0.5 transition-transform ${
-                      applyBenchmarkSubtitleStyle ? 'ml-6' : 'ml-1'
-                    }`}
-                  />
-                </button>
-              </label>
-
-              <label className="flex items-center justify-between p-4 bg-dark-800 rounded-xl cursor-pointer hover:bg-dark-700/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Video className="w-5 h-5 text-secondary" />
-                  <span>应用转场效果</span>
-                </div>
-                <button
-                  onClick={() => updateBenchmarkApplySettings({ applyTransitions: !applyBenchmarkTransitions })}
-                  className={`w-12 h-6 rounded-full transition-colors ${
-                    applyBenchmarkTransitions ? 'bg-secondary' : 'bg-dark-600'
-                  }`}
-                >
-                  <div
-                    className={`w-5 h-5 bg-white rounded-full mt-0.5 transition-transform ${
-                      applyBenchmarkTransitions ? 'ml-6' : 'ml-1'
-                    }`}
-                  />
-                </button>
-              </label>
-
-              <div className="p-4 bg-dark-800/50 rounded-xl border border-primary/30">
-                <p className="text-sm text-gray-400">
-                  💡 建议首次尝试开启全部选项，效果更佳
-                </p>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 };
 
 export default BenchmarkPage;
