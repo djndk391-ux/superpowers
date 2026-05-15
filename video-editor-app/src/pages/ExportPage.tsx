@@ -130,11 +130,25 @@ const ExportPage = () => {
                   <h2 className="text-2xl font-bold mb-2">导出完成！</h2>
                   <p className="text-gray-400 mb-6">您的视频已准备好</p>
                   <div className="flex gap-3">
-                    <button className="px-6 py-3 bg-gradient-to-r from-primary to-secondary rounded-xl font-medium hover:shadow-lg hover:shadow-primary/25 transition-all flex items-center gap-2">
+                    <button 
+                      onClick={() => {
+                        // 创建下载链接，下载我们的原始视频作为示例
+                        const link = document.createElement('a');
+                        link.href = videoUrl || 'https://www.w3schools.com/html/mov_bbb.mp4';
+                        link.download = 'edited-video.mp4';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                      className="px-6 py-3 bg-gradient-to-r from-primary to-secondary rounded-xl font-medium hover:shadow-lg hover:shadow-primary/25 transition-all flex items-center gap-2"
+                    >
                       <Download className="w-5 h-5" />
                       下载视频
                     </button>
-                    <button className="px-6 py-3 bg-dark-700 rounded-xl font-medium hover:bg-dark-600 transition-all flex items-center gap-2">
+                    <button 
+                      onClick={() => alert('分享功能需要连接社交平台API，这是演示版本，分享功能待开发！')}
+                      className="px-6 py-3 bg-dark-700 rounded-xl font-medium hover:bg-dark-600 transition-all flex items-center gap-2"
+                    >
                       <Share2 className="w-5 h-5" />
                       分享
                     </button>
