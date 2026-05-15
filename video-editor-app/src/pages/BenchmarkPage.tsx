@@ -1,29 +1,13 @@
-import { useState, useRef } from 'react';
-import {
-  Video,
-  TrendingUp,
-  Clock,
-  Type,
-  Zap,
-  Check,
-  ArrowRight,
-  Play,
-  Pause,
-  Sparkles,
-  Info,
-  Upload,
-  Link,
-  X,
-} from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Video, Sparkles, Upload, Link, ArrowRight, TrendingUp, Clock, Zap, Type, Check, Info } from 'lucide-react';
 import { useVideoStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 
-const BenchmarkPage = () => {
+const BenchmarkPage: React.FC = () => {
   const navigate = useNavigate();
   const {
     videoUrl,
     benchmarkUrl,
-    benchmarkFile,
     setBenchmark,
     setAnalyzingBenchmark,
     isAnalyzingBenchmark,
@@ -33,14 +17,10 @@ const BenchmarkPage = () => {
     applyBenchmarkCutPoints,
     applyBenchmarkRhythm,
     applyBenchmarkSubtitleStyle,
-    applyBenchmarkTransitions,
+    applyBenchmarkTransitions
   } = useVideoStore();
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [isPlaying1, setIsPlaying1] = useState(false);
-  const [isPlaying2, setIsPlaying2] = useState(false);
   const [benchmarkVideoUrlInput, setBenchmarkVideoUrlInput] = useState('');
-  const [uploadProgress, setUploadProgress] = useState(0);
   const videoRef1 = useRef<HTMLVideoElement>(null);
   const videoRef2 = useRef<HTMLVideoElement>(null);
 
@@ -50,104 +30,47 @@ const BenchmarkPage = () => {
   }
 
   const processBenchmarkFile = (file: File) => {
-    setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
-
-    setTimeout(() => {
-      const url = URL.createObjectURL(file);
-      const video = document.createElement('video');
-      video.src = url;
-      video.onloadedmetadata = () => {
-        setBenchmark(file, url, video.duration, file.name);
-      };
-    }, 2000);
+    const url = URL.createObjectURL(file);
+    setBenchmark(file, url, 120, file.name);
   };
 
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (benchmarkVideoUrlInput.trim()) {
-      setUploadProgress(0);
-      const interval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 200);
-
-      setTimeout(() => {
-        const fileName = benchmarkVideoUrlInput.split('/').pop() || `video-${Date.now()}`;
-        setBenchmark(null as any, benchmarkVideoUrlInput, 120, fileName);
-      }, 2000);
+      const fileName = benchmarkVideoUrlInput.split('/').pop() || `video-${Date.now()}`;
+      setBenchmark(null as any, benchmarkVideoUrlInput, 120, fileName);
     }
   };
 
   const startAnalysis = () => {
     setAnalyzingBenchmark(true);
-    
     setTimeout(() => {
-      const mockAnalysis = {
+      setBenchmarkAnalysis({
         cutPoints: [
           { time: 3.2, type: '场景切换' },
           { time: 7.8, type: '节奏转折点' },
-          { time: 12.5, type: '黄金分割点' },
-          { time: 18.3, type: '转场点' },
-          { time: 24.1, type: '高潮开始' },
+          { time: 12.5, type: '黄金分割点' }
         ],
         rhythmData: [
           { time: 0, intensity: 0.3 },
           { time: 5, intensity: 0.5 },
-          { time: 10, intensity: 0.7 },
-          { time: 15, intensity: 0.9 },
-          { time: 20, intensity: 0.8 },
-          { time: 25, intensity: 0.6 },
+          { time: 10, intensity: 0.7 }
         ],
         subtitleStyle: {
           fontSize: 28,
           fontFamily: 'system-ui',
           color: '#ffffff',
           backgroundColor: 'rgba(0,0,0,0.75)',
-          position: 'bottom' as const,
+          position: 'bottom'
         },
-        transitions: ['淡入淡出', '硬切', '缩放'],
-        tips: [
-          '开头3秒使用痛点式切入，直接抓住观众注意力',
-          '每3-5秒一个信息点，避免节奏拖沓',
-          '使用情绪转折点增加视频张力',
-          '字幕使用大号字体，提高可读性',
-          '视频时长控制在25-40秒区间数据最佳',
-        ],
-      };
-      setBenchmarkAnalysis(mockAnalysis);
+        transitions: ['淡入淡出', '硬切'],
+        tips: ['开头3秒用痛点式切入', '每3-5秒一个信息点']
+      });
       setAnalyzingBenchmark(false);
     }, 3000);
   };
 
-  const togglePlay1 = () => {
-    if (videoRef1.current) {
-      isPlaying1 ? videoRef1.current.pause() : videoRef1.current.play();
-      setIsPlaying1(!isPlaying1);
-    }
-  };
-
-  const togglePlay2 = () => {
-    if (videoRef2.current) {
-      isPlaying2 ? videoRef2.current.pause() : videoRef2.current.play();
-      setIsPlaying2(!isPlaying2);
-    }
-  };
-
-  const formatTime = (seconds: number): string => {
+  const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -155,19 +78,12 @@ const BenchmarkPage = () => {
 
   return (
     <div className="min-h-screen relative">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/20 rounded-full blur-3xl floating"></div>
-        <div className="absolute top-1/2 -left-40 w-96 h-96 bg-secondary/15 rounded-full blur-3xl floating" style={{ animationDelay: '-3s' }}></div>
-      </div>
-
       <div className="container mx-auto px-6 py-12 relative z-10">
         <div className="text-center mb-10">
           <h1 className="text-4xl md:text-5xl font-orbitron font-bold mb-4">
             <span className="gradient-text">对标视频分析</span>
           </h1>
-          <p className="text-gray-400 text-lg">
-            上传对标视频，让 AI 分析它的剪辑技巧
-          </p>
+          <p className="text-gray-400 text-lg">上传对标视频，让 AI 分析它的剪辑技巧</p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
@@ -175,31 +91,12 @@ const BenchmarkPage = () => {
             {!benchmarkUrl ? (
               <div className="glass-card rounded-3xl p-8">
                 <div className="text-center mb-8">
-                  <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-4">
-                    <Sparkles className="w-10 h-10 text-primary" />
-                  </div>
                   <h2 className="text-2xl font-bold text-white mb-2">上传对标视频</h2>
                   <p className="text-gray-400">选择或拖放您想要学习的视频</p>
                 </div>
 
                 <div className="space-y-6">
-                  <div
-                    className={`relative upload-zone rounded-2xl p-10 text-center cursor-pointer ${isDragging ? 'dragging' : ''}`}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsDragging(true);
-                    }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDragging(false);
-                      const files = Array.from(e.dataTransfer.files);
-                      const videoFile = files.find(f => f.type.startsWith('video/'));
-                      if (videoFile) {
-                        processBenchmarkFile(videoFile);
-                      }
-                    }}
-                  >
+                  <div className="upload-zone rounded-2xl p-10 text-center cursor-pointer">
                     <input
                       type="file"
                       accept="video/*"
@@ -221,9 +118,9 @@ const BenchmarkPage = () => {
                   </div>
 
                   <div className="flex items-center gap-4">
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent"></div>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
                     <span className="text-gray-500 text-sm">或通过链接导入</span>
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent"></div>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
                   </div>
 
                   <form onSubmit={handleUrlSubmit} className="space-y-3">
@@ -240,9 +137,8 @@ const BenchmarkPage = () => {
                     <button
                       type="submit"
                       disabled={!benchmarkVideoUrlInput.trim()}
-                      className="w-full py-4 bg-dark-700 hover:bg-dark-600 rounded-xl font-medium text-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="w-full py-4 bg-dark-700 hover:bg-dark-600 rounded-xl font-medium text-gray-200 transition-all disabled:opacity-50"
                     >
-                      <Link className="w-5 h-5" />
                       从链接导入
                     </button>
                   </form>
@@ -251,42 +147,11 @@ const BenchmarkPage = () => {
             ) : !benchmarkAnalysis ? (
               <div className="glass-card rounded-3xl p-8">
                 <div className="grid md:grid-cols-2 gap-6 mb-8">
-                  <div className="bg-dark-800/50 rounded-2xl overflow-hidden relative">
-                    <video
-                      ref={videoRef1}
-                      src={videoUrl}
-                      className="w-full aspect-video object-cover bg-black"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <button
-                        onClick={togglePlay1}
-                        className="p-4 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
-                      >
-                        {isPlaying1 ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
-                      </button>
-                    </div>
-                    <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-lg text-sm">
-                      您的视频
-                    </div>
+                  <div className="bg-dark-800/50 rounded-2xl overflow-hidden">
+                    <video ref={videoRef1} src={videoUrl} className="w-full aspect-video object-cover bg-black" />
                   </div>
-
-                  <div className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl overflow-hidden relative border border-primary/20">
-                    <video
-                      ref={videoRef2}
-                      src={benchmarkUrl}
-                      className="w-full aspect-video object-cover bg-black"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <button
-                        onClick={togglePlay2}
-                        className="p-4 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
-                      >
-                        {isPlaying2 ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
-                      </button>
-                    </div>
-                    <div className="absolute top-4 left-4 bg-gradient-to-r from-primary to-secondary px-3 py-1 rounded-lg text-sm">
-                      对标视频
-                    </div>
+                  <div className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl overflow-hidden border border-primary/20">
+                    <video ref={videoRef2} src={benchmarkUrl} className="w-full aspect-video object-cover bg-black" />
                   </div>
                 </div>
 
@@ -294,7 +159,7 @@ const BenchmarkPage = () => {
                   <button
                     onClick={startAnalysis}
                     disabled={isAnalyzingBenchmark}
-                    className="px-10 py-5 btn-primary rounded-2xl font-semibold text-lg text-white flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-10 py-5 btn-primary rounded-2xl font-semibold text-lg text-white flex items-center gap-3 disabled:opacity-50"
                   >
                     {isAnalyzingBenchmark ? (
                       <>
@@ -312,53 +177,13 @@ const BenchmarkPage = () => {
               </div>
             ) : (
               <div className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="glass-card rounded-2xl overflow-hidden">
-                    <video
-                      ref={videoRef1}
-                      src={videoUrl}
-                      className="w-full aspect-video object-cover bg-black"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <button
-                        onClick={togglePlay1}
-                        className="p-4 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
-                      >
-                        {isPlaying1 ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
-                      </button>
-                    </div>
-                    <div className="p-4 bg-dark-800/80 backdrop-blur-sm">
-                      <p className="text-sm text-gray-400">您的视频</p>
-                    </div>
-                  </div>
-
-                  <div className="glass-card rounded-2xl overflow-hidden border border-primary/20">
-                    <video
-                      ref={videoRef2}
-                      src={benchmarkUrl}
-                      className="w-full aspect-video object-cover bg-black"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <button
-                        onClick={togglePlay2}
-                        className="p-4 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
-                      >
-                        {isPlaying2 ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
-                      </button>
-                    </div>
-                    <div className="p-4 bg-gradient-to-r from-primary/20 to-secondary/20">
-                      <p className="text-sm text-gray-300">对标视频</p>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="glass-card rounded-2xl p-6">
                   <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                     <TrendingUp className="w-6 h-6 text-secondary" />
                     剪辑技巧分析报告
                   </h3>
 
-                  <div className="grid md:grid-cols-2 gap-6">
+                  <div className="grid md:grid-cols-2 gap-6 mb-6">
                     <div className="bg-dark-800/50 rounded-xl p-5">
                       <h4 className="font-medium mb-4 flex items-center gap-2">
                         <Clock className="w-5 h-5 text-primary" />
@@ -383,50 +208,10 @@ const BenchmarkPage = () => {
                         {benchmarkAnalysis.rhythmData.map((data, idx) => (
                           <div
                             key={idx}
-                            className="flex-1 bg-gradient-to-t from-primary to-secondary rounded-t transition-all hover:opacity-80"
+                            className="flex-1 bg-gradient-to-t from-primary to-secondary rounded-t"
                             style={{ height: `${data.intensity * 100}%` }}
                           />
                         ))}
-                      </div>
-                    </div>
-
-                    <div className="bg-dark-800/50 rounded-xl p-5">
-                      <h4 className="font-medium mb-4 flex items-center gap-2">
-                        <Video className="w-5 h-5 text-primary" />
-                        使用的转场方式
-                      </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {benchmarkAnalysis.transitions.map((trans, idx) => (
-                          <span
-                            key={idx}
-                            className="px-4 py-2 bg-primary/20 text-primary rounded-full text-sm font-medium"
-                          >
-                            {trans}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="bg-dark-800/50 rounded-xl p-5">
-                      <h4 className="font-medium mb-4 flex items-center gap-2">
-                        <Type className="w-5 h-5 text-secondary" />
-                        字幕风格
-                      </h4>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex justify-between p-3 bg-dark-700/50 rounded-lg">
-                          <span className="text-gray-400">字体大小</span>
-                          <span className="text-white">{benchmarkAnalysis.subtitleStyle.fontSize}px</span>
-                        </div>
-                        <div className="flex justify-between p-3 bg-dark-700/50 rounded-lg">
-                          <span className="text-gray-400">位置</span>
-                          <span className="text-white">
-                            {benchmarkAnalysis.subtitleStyle.position === 'top'
-                              ? '顶部'
-                              : benchmarkAnalysis.subtitleStyle.position === 'center'
-                              ? '居中'
-                              : '底部'}
-                          </span>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -448,17 +233,15 @@ const BenchmarkPage = () => {
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {benchmarkUrl && benchmarkAnalysis && (
-              <button
-                onClick={() => navigate('/editor')}
-                className="w-full py-5 btn-secondary rounded-2xl font-semibold text-lg text-white flex items-center justify-center gap-3"
-              >
-                应用技巧并继续
-                <ArrowRight className="w-6 h-6" />
-              </button>
+                <button
+                  onClick={() => navigate('/editor')}
+                  className="w-full py-5 btn-secondary rounded-2xl font-semibold text-lg text-white flex items-center justify-center gap-3"
+                >
+                  应用技巧并继续
+                  <ArrowRight className="w-6 h-6" />
+                </button>
+              </div>
             )}
           </div>
 
@@ -471,7 +254,7 @@ const BenchmarkPage = () => {
                 </h2>
 
                 <div className="space-y-4">
-                  <label className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl cursor-pointer hover:bg-dark-800/70 transition-colors group">
+                  <div className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
                         <Clock className="w-5 h-5 text-primary" />
@@ -483,19 +266,21 @@ const BenchmarkPage = () => {
                     </div>
                     <button
                       onClick={() => updateBenchmarkApplySettings({ applyCutPoints: !applyBenchmarkCutPoints })}
-                      className={`w-14 h-8 rounded-full transition-all relative ${
-                        applyBenchmarkCutPoints ? 'bg-gradient-to-r from-primary to-secondary' : 'bg-dark-700'
-                      }`}
+                      className="w-14 h-8 rounded-full transition-all relative"
+                      style={{
+                        background: applyBenchmarkCutPoints ? 'linear-gradient(135deg, #6366F1, #F97316)' : '#374151'
+                      }}
                     >
                       <div
-                        className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${
-                          applyBenchmarkCutPoints ? 'left-7' : 'left-1'
-                        }`}
+                        className="absolute top-1 w-6 h-6 bg-white rounded-full transition-all"
+                        style={{
+                          left: applyBenchmarkCutPoints ? '28px' : '4px'
+                        }}
                       />
                     </button>
-                  </label>
+                  </div>
 
-                  <label className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl cursor-pointer hover:bg-dark-800/70 transition-colors group">
+                  <div className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
                         <Zap className="w-5 h-5 text-secondary" />
@@ -507,19 +292,21 @@ const BenchmarkPage = () => {
                     </div>
                     <button
                       onClick={() => updateBenchmarkApplySettings({ applyRhythm: !applyBenchmarkRhythm })}
-                      className={`w-14 h-8 rounded-full transition-all relative ${
-                        applyBenchmarkRhythm ? 'bg-gradient-to-r from-primary to-secondary' : 'bg-dark-700'
-                      }`}
+                      className="w-14 h-8 rounded-full transition-all relative"
+                      style={{
+                        background: applyBenchmarkRhythm ? 'linear-gradient(135deg, #6366F1, #F97316)' : '#374151'
+                      }}
                     >
                       <div
-                        className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${
-                          applyBenchmarkRhythm ? 'left-7' : 'left-1'
-                        }`}
+                        className="absolute top-1 w-6 h-6 bg-white rounded-full transition-all"
+                        style={{
+                          left: applyBenchmarkRhythm ? '28px' : '4px'
+                        }}
                       />
                     </button>
-                  </label>
+                  </div>
 
-                  <label className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl cursor-pointer hover:bg-dark-800/70 transition-colors group">
+                  <div className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
                         <Type className="w-5 h-5 text-primary" />
@@ -531,19 +318,21 @@ const BenchmarkPage = () => {
                     </div>
                     <button
                       onClick={() => updateBenchmarkApplySettings({ applySubtitleStyle: !applyBenchmarkSubtitleStyle })}
-                      className={`w-14 h-8 rounded-full transition-all relative ${
-                        applyBenchmarkSubtitleStyle ? 'bg-gradient-to-r from-primary to-secondary' : 'bg-dark-700'
-                      }`}
+                      className="w-14 h-8 rounded-full transition-all relative"
+                      style={{
+                        background: applyBenchmarkSubtitleStyle ? 'linear-gradient(135deg, #6366F1, #F97316)' : '#374151'
+                      }}
                     >
                       <div
-                        className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${
-                          applyBenchmarkSubtitleStyle ? 'left-7' : 'left-1'
-                        }`}
+                        className="absolute top-1 w-6 h-6 bg-white rounded-full transition-all"
+                        style={{
+                          left: applyBenchmarkSubtitleStyle ? '28px' : '4px'
+                        }}
                       />
                     </button>
-                  </label>
+                  </div>
 
-                  <label className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl cursor-pointer hover:bg-dark-800/70 transition-colors group">
+                  <div className="flex items-center justify-between p-4 bg-dark-800/50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
                         <Video className="w-5 h-5 text-secondary" />
@@ -555,17 +344,19 @@ const BenchmarkPage = () => {
                     </div>
                     <button
                       onClick={() => updateBenchmarkApplySettings({ applyTransitions: !applyBenchmarkTransitions })}
-                      className={`w-14 h-8 rounded-full transition-all relative ${
-                        applyBenchmarkTransitions ? 'bg-gradient-to-r from-primary to-secondary' : 'bg-dark-700'
-                      }`}
+                      className="w-14 h-8 rounded-full transition-all relative"
+                      style={{
+                        background: applyBenchmarkTransitions ? 'linear-gradient(135deg, #6366F1, #F97316)' : '#374151'
+                      }}
                     >
                       <div
-                        className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${
-                          applyBenchmarkTransitions ? 'left-7' : 'left-1'
-                        }`}
+                        className="absolute top-1 w-6 h-6 bg-white rounded-full transition-all"
+                        style={{
+                          left: applyBenchmarkTransitions ? '28px' : '4px'
+                        }}
                       />
                     </button>
-                  </label>
+                  </div>
 
                   <div className="p-4 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl border border-primary/20">
                     <div className="flex items-start gap-3">
@@ -581,8 +372,8 @@ const BenchmarkPage = () => {
           )}
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 };
 
 export default BenchmarkPage;
