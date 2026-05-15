@@ -59,7 +59,8 @@ export interface VideoState {
   setCurrentStep: (step: number) => void;
   
   // 对标视频方法
-  setBenchmark: (file: File, url: string, duration: number, fileName: string) => void;
+  setBenchmark: (file: File | null, url: string | null, duration: number, fileName: string) => void;
+  resetBenchmark: () => void;
   setBenchmarkAnalysis: (analysis: BenchmarkAnalysis) => void;
   setAnalyzingBenchmark: (value: boolean) => void;
   updateBenchmarkApplySettings: (settings: Partial<{
@@ -122,12 +123,22 @@ export const useVideoStore = create<VideoState>((set) => ({
     benchmarkUrl: url,
     benchmarkDuration: duration,
     benchmarkFileName: fileName,
-    benchmarkId: Date.now().toString(),
+    benchmarkId: file || url ? Date.now().toString() : null,
   }),
-  
+
+  resetBenchmark: () => set({
+    benchmarkId: null,
+    benchmarkFile: null,
+    benchmarkUrl: null,
+    benchmarkDuration: 0,
+    benchmarkFileName: '',
+    isAnalyzingBenchmark: false,
+    benchmarkAnalysis: null,
+  }),
+
   setBenchmarkAnalysis: (analysis) => set({ benchmarkAnalysis: analysis }),
   setAnalyzingBenchmark: (value) => set({ isAnalyzingBenchmark: value }),
-  
+
   updateBenchmarkApplySettings: (settings) => set((state) => ({
     applyBenchmarkCutPoints: settings.applyCutPoints ?? state.applyBenchmarkCutPoints,
     applyBenchmarkRhythm: settings.applyRhythm ?? state.applyBenchmarkRhythm,
