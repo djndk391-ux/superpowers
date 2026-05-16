@@ -443,7 +443,7 @@ export class VideoParser {
           response.on('data', (chunk: Buffer) => {
             downloadedBytes += chunk.length;
             if (totalBytes > 0) {
-              const progress = Math.round((downloadedBytes / totalBytes) * 100;
+              const progress = Math.round((downloadedBytes / totalBytes) * 100);
               if (progress % 20 === 0) {
                 console.log(`下载进度: ${progress}%`);
               }

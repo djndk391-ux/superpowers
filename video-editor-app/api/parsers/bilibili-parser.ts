@@ -1,12 +1,16 @@
 /**
  * B站视频解析器
- * 支持BV号和AV号的基础解析
+ * 使用B站官方API实现稳定解析
  */
 import { BaseParser, ParseResult } from './base-parser.js';
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
 
 export class BilibiliParser extends BaseParser {
   name = 'B站解析器';
   platform = 'bilibili';
+  private downloadDir = path.join(process.cwd(), 'downloads');
 
   canHandle(url: string, platformInfo: any): boolean {
     return platformInfo && platformInfo.type === 'bilibili';
@@ -16,7 +20,7 @@ export class BilibiliParser extends BaseParser {
     try {
       console.log(`开始解析B站视频: ${url}, ID: ${id}`);
 
-      // 提取BV号或AV号
+      // 提取BV号
       const bvMatch = url.match(/BV[0-9A-Za-z]{10}/);
       const bvId = bvMatch ? bvMatch[0] : id;
 
@@ -29,14 +33,53 @@ export class BilibiliParser extends BaseParser {
 
       console.log(`提取到BV号: ${bvId}`);
 
-      // 注意：B站正式API需要复杂的签名和Cookie
-      // 这里我们提供一个友好的错误提示，并建议使用第三方解析服务或获取直链
-      
+      // 步骤1: 获取视频信息
+      const videoInfo = await this.getVideoInfo(bvId);
+      if (!videoInfo) {
+        return {
+          success: false,
+          error: '无法获取视频信息，请检查BV号是否正确'
+        };
+      }
+
+      console.log(`获取到视频信息: ${videoInfo.title}`);
+
+      // 步骤2: 获取视频下载链接
+      const downloadUrl = await this.getDownloadUrl(bvId, videoInfo.cid);
+      if (!downloadUrl) {
+        return {
+          success: false,
+          error: '无法获取视频下载链接'
+        };
+      }
+
+      console.log(`获取到下载链接，开始下载...`);
+
+      // 步骤3: 下载视频
+      const filePath = await this.downloadVideo(downloadUrl, videoInfo.title);
+      if (!filePath) {
+        return {
+          success: false,
+          error: '视频下载失败'
+        };
+      }
+
       return {
-        success: false,
-        error: 'B站视频需要特殊解析。建议：\n1. 使用B站视频下载工具获取MP4直链\n2. 或使用第三方解析服务获取视频地址\n3. 直接粘贴视频MP4链接进行编辑',
-        title: 'B站视频 ' + bvId,
-        description: '需要特殊解析'
+        success: true,
+        title: videoInfo.title,
+        description: videoInfo.desc || '',
+        duration: videoInfo.duration,
+        videoUrl: filePath,
+        thumbnail: videoInfo.pic,
+        author: videoInfo.owner?.name || '未知',
+        platform: 'bilibili',
+        metadata: {
+          bvid: bvId,
+          aid: videoInfo.aid,
+          cid: videoInfo.cid,
+          view: videoInfo.stat?.view || 0,
+          like: videoInfo.stat?.like || 0
+        }
       };
 
     } catch (error) {
@@ -46,5 +89,170 @@ export class BilibiliParser extends BaseParser {
         error: '解析B站视频时发生错误: ' + (error instanceof Error ? error.message : '未知错误')
       };
     }
+  }
+
+  /**
+   * 获取视频基本信息
+   */
+  private async getVideoInfo(bvid: string): Promise<any> {
+    return new Promise((resolve) => {
+      const options = {
+        hostname: 'api.bilibili.com',
+        path: `/x/web-interface/view?bvid=${bvid}`,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://www.bilibili.com/',
+          'Accept': 'application/json'
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            if (json.code === 0 && json.data) {
+              resolve(json.data);
+            } else {
+              console.error('API返回错误:', json.message);
+              resolve(null);
+            }
+          } catch (e) {
+            console.error('解析API响应失败:', e);
+            resolve(null);
+          }
+        });
+      });
+
+      req.on('error', (e) => {
+        console.error('请求视频信息失败:', e);
+        resolve(null);
+      });
+
+      req.end();
+    });
+  }
+
+  /**
+   * 获取视频下载链接
+   */
+  private async getDownloadUrl(bvid: string, cid: number): Promise<string | null> {
+    return new Promise((resolve) => {
+      const options = {
+        hostname: 'api.bilibili.com',
+        path: `/x/player/playurl?bvid=${bvid}&cid=${cid}&qn=64&fnval=0&fnver=0&otype=json`,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': `https://www.bilibili.com/video/${bvid}/`,
+          'Accept': 'application/json'
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            if (json.code === 0 && json.data?.durl?.[0]?.url) {
+              resolve(json.data.durl[0].url);
+            } else {
+              console.error('获取下载链接失败:', json.message);
+              resolve(null);
+            }
+          } catch (e) {
+            console.error('解析下载链接失败:', e);
+            resolve(null);
+          }
+        });
+      });
+
+      req.on('error', (e) => {
+        console.error('请求下载链接失败:', e);
+        resolve(null);
+      });
+
+      req.end();
+    });
+  }
+
+  /**
+   * 下载视频文件
+   */
+  private async downloadVideo(url: string, title: string): Promise<string | null> {
+    return new Promise((resolve) => {
+      try {
+        // 确保下载目录存在
+        if (!fs.existsSync(this.downloadDir)) {
+          fs.mkdirSync(this.downloadDir, { recursive: true });
+        }
+
+        // 清理文件名
+        const safeTitle = title.replace(/[<>:"/\\|?*]/g, '_').substring(0, 100);
+        const filePath = path.join(this.downloadDir, `${safeTitle}.mp4`);
+
+        console.log(`开始下载视频到: ${filePath}`);
+
+        const req = https.request(url, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.bilibili.com/',
+          }
+        }, (res) => {
+          // 处理重定向
+          if (res.statusCode === 302 || res.statusCode === 301) {
+            const redirectUrl = res.headers.location;
+            if (redirectUrl) {
+              console.log('检测到重定向:', redirectUrl.substring(0, 100));
+              this.downloadVideo(redirectUrl, title).then(resolve);
+              return;
+            }
+          }
+
+          const fileStream = fs.createWriteStream(filePath);
+          let downloadedBytes = 0;
+          const totalBytes = parseInt(res.headers['content-length'] || '0', 10);
+
+          res.on('data', (chunk) => {
+            downloadedBytes += chunk.length;
+            if (totalBytes > 0) {
+              const progress = Math.round((downloadedBytes / totalBytes) * 100);
+              if (progress % 10 === 0) {
+                console.log(`下载进度: ${progress}%`);
+              }
+            }
+          });
+
+          res.pipe(fileStream);
+
+          fileStream.on('finish', () => {
+            fileStream.close();
+            console.log(`下载完成: ${filePath}`);
+            resolve(filePath);
+          });
+
+          fileStream.on('error', (err) => {
+            console.error('写入文件失败:', err);
+            fs.unlink(filePath, () => {});
+            resolve(null);
+          });
+        });
+
+        req.on('error', (e) => {
+          console.error('下载请求失败:', e);
+          resolve(null);
+        });
+
+        req.end();
+
+      } catch (error) {
+        console.error('下载过程出错:', error);
+        resolve(null);
+      }
+    });
   }
 }
