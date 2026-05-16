@@ -248,7 +248,10 @@ export class VideoParser {
   
   static detectPlatform(url: string): PlatformInfo | null {
     try {
-      const parsedUrl = new URL(url);
+      // 清理URL，只保留基础URL（去除查询参数）
+      const cleanUrl = url.split('?')[0];
+      
+      const parsedUrl = new URL(cleanUrl);
       const hostname = parsedUrl.hostname.toLowerCase();
 
       if (hostname.includes('bilibili.com') || hostname.includes('b23.tv')) {
@@ -326,7 +329,10 @@ export class VideoParser {
   }
 
   static async parseAndDownload(videoUrl: string): Promise<any> {
-    const platformInfo = this.detectPlatform(videoUrl);
+    // 清理URL，去除查询参数
+    const cleanUrl = videoUrl.split('?')[0];
+    
+    const platformInfo = this.detectPlatform(cleanUrl);
 
     if (!platformInfo) {
       return {
@@ -343,7 +349,8 @@ export class VideoParser {
     }
 
     console.log('尝试第三方API解析...');
-    const parseResult = await ThirdPartyParser.parseWithApi(videoUrl);
+    // 传递清理后的URL给解析API
+    const parseResult = await ThirdPartyParser.parseWithApi(cleanUrl);
 
     if (parseResult.success && parseResult.videoUrl) {
       console.log('第三方解析成功，开始下载视频');
