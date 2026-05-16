@@ -37,28 +37,60 @@ const ImportPage = () => {
     }, 2000);
   };
 
-  const handleUrlSubmit = (e: React.FormEvent, type: 'main' | 'benchmark', url: string) => {
+  const handleUrlSubmit = async (e: React.FormEvent, type: 'main' | 'benchmark', url: string) => {
     e.preventDefault();
     if (url.trim()) {
       setUploadProgress(0);
-      const interval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return prev + 10;
+      
+      try {
+        // 调用后端API下载视频
+        const response = await fetch('/api/download/download', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url: url.trim() }),
         });
-      }, 200);
 
-      setTimeout(() => {
-        const fileName = url.split('/').pop() || `video-${Date.now()}`;
-        if (type === 'main') {
-          setVideo(null as any, url, 120, fileName);
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          // 下载成功，使用本地路径
+          const localPath = result.data.filePath;
+          const fileName = result.data.fileName;
+          
+          // 模拟加载进度
+          for (let i = 0; i <= 100; i += 10) {
+            setUploadProgress(i);
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+
+          // 构建本地视频URL
+          const videoUrl = localPath;
+
+          if (type === 'main') {
+            // 获取视频时长
+            const video = document.createElement('video');
+            video.src = videoUrl;
+            video.onloadedmetadata = () => {
+              setVideo(null as any, videoUrl, video.duration, fileName);
+            };
+            video.onerror = () => {
+              // 如果无法加载，使用默认时长
+              setVideo(null as any, videoUrl, 120, fileName);
+            };
+          } else {
+            setBenchmark(null as any, videoUrl, 120, fileName);
+          }
         } else {
-          setBenchmark(null as any, url, 120, fileName);
+          alert(`下载失败: ${result.error || '未知错误'}`);
+          setUploadProgress(0);
         }
-      }, 2000);
+      } catch (error) {
+        console.error('下载错误:', error);
+        alert('下载失败，请检查网络连接');
+        setUploadProgress(0);
+      }
     }
   };
 

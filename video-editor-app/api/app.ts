@@ -12,6 +12,7 @@ import path from 'path'
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import authRoutes from './routes/auth.js'
+import downloadRoutes from './routes/download.js'
 
 // for esm mode
 const __filename = fileURLToPath(import.meta.url)
@@ -30,6 +31,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
  * API Routes
  */
 app.use('/api/auth', authRoutes)
+app.use('/api/download', downloadRoutes)
+
+// 提供静态文件访问
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 
 /**
  * health
