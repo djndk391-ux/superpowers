@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, X, FileVideo, Sparkles, Link, Video, ArrowRight, Zap, TrendingUp, Play } from 'lucide-react';
+import { Upload, X, FileVideo, Sparkles, Link, Video, ArrowRight, Zap, TrendingUp, Play, AlertCircle, Info, CheckCircle2 } from 'lucide-react';
 import { useVideoStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,6 +8,7 @@ const ImportPage = () => {
   const [benchmarkVideoUrlInput, setBenchmarkVideoUrlInput] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'info' | 'success' | 'error', text: string } | null>(null);
   const { setVideo, setBenchmark, resetBenchmark, videoUrl, fileName, benchmarkUrl, benchmarkFileName } = useVideoStore();
   const navigate = useNavigate();
 
@@ -41,10 +42,11 @@ const ImportPage = () => {
     e.preventDefault();
     if (url.trim()) {
       setUploadProgress(0);
+      setStatusMessage({ type: 'info', text: '正在解析视频链接...' });
       
       try {
-        // 调用后端API下载视频
-        const response = await fetch('/api/download/download', {
+        // 调用后端API解析和下载视频
+        const response = await fetch('/api/download/parse', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -57,7 +59,9 @@ const ImportPage = () => {
         if (result.success && result.data) {
           // 下载成功，使用本地路径
           const localPath = result.data.filePath;
-          const fileName = result.data.fileName;
+          const fileName = result.data.title || result.data.fileName;
+          
+          setStatusMessage({ type: 'success', text: '视频解析成功，正在加载...' });
           
           // 模拟加载进度
           for (let i = 0; i <= 100; i += 10) {
@@ -74,22 +78,31 @@ const ImportPage = () => {
             video.src = videoUrl;
             video.onloadedmetadata = () => {
               setVideo(null as any, videoUrl, video.duration, fileName);
+              setStatusMessage(null);
             };
             video.onerror = () => {
               // 如果无法加载，使用默认时长
               setVideo(null as any, videoUrl, 120, fileName);
+              setStatusMessage(null);
             };
           } else {
             setBenchmark(null as any, videoUrl, 120, fileName);
+            setStatusMessage(null);
           }
         } else {
-          alert(`下载失败: ${result.error || '未知错误'}`);
+          // 解析失败，显示友好的错误信息
+          setStatusMessage({ type: 'error', text: result.error || '解析失败' });
           setUploadProgress(0);
+          
+          // 3秒后清除错误信息
+          setTimeout(() => setStatusMessage(null), 5000);
         }
       } catch (error) {
-        console.error('下载错误:', error);
-        alert('下载失败，请检查网络连接');
+        console.error('解析错误:', error);
+        setStatusMessage({ type: 'error', text: '网络错误，请检查连接' });
         setUploadProgress(0);
+        
+        setTimeout(() => setStatusMessage(null), 5000);
       }
     }
   };
@@ -116,6 +129,41 @@ const ImportPage = () => {
           <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto">
             选择您的剪辑方式，让 AI 帮您快速制作高质量短视频
           </p>
+        </div>
+
+        {/* 状态消息显示 */}
+        {statusMessage && (
+          <div className="max-w-2xl mx-auto mb-8">
+            <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl ${
+              statusMessage.type === 'info' ? 'bg-blue-500/10 border border-blue-500/20' :
+              statusMessage.type === 'success' ? 'bg-green-500/10 border border-green-500/20' :
+              'bg-red-500/10 border border-red-500/20'
+            }`}>
+              {statusMessage.type === 'info' && <Info className="w-5 h-5 text-blue-400" />}
+              {statusMessage.type === 'success' && <CheckCircle2 className="w-5 h-5 text-green-400" />}
+              {statusMessage.type === 'error' && <AlertCircle className="w-5 h-5 text-red-400" />}
+              <p className={`font-medium ${
+                statusMessage.type === 'info' ? 'text-blue-300' :
+                statusMessage.type === 'success' ? 'text-green-300' :
+                'text-red-300'
+              }`}>
+                {statusMessage.text}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 使用提示 */}
+        <div className="max-w-2xl mx-auto mb-8">
+          <div className="flex items-start gap-3 px-6 py-4 rounded-2xl bg-gray-900/50 border border-gray-800">
+            <Info className="w-5 h-5 text-yellow-400 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-gray-300 text-sm font-medium mb-1">支持的链接格式</p>
+              <p className="text-gray-500 text-xs">
+                推荐使用直接的视频链接（.mp4, .webm, .mov）。B站、抖音等平台视频需要获取真实视频地址或使用第三方解析。
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
