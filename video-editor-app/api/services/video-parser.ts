@@ -8,6 +8,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { ParserManager } from '../parsers/parser-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -342,6 +343,49 @@ export class VideoParser {
     }
 
     console.log(`识别到平台: ${platformInfo.name}`);
+
+    // 优先使用我们专门的解析器管理器
+    if (platformInfo.type === 'bilibili') {
+      console.log('使用B站专门解析器...');
+      const parserManager = new ParserManager();
+      const parseResult = await parserManager.parseVideoUrl(videoUrl);
+      
+      if (parseResult.success) {
+        // BilibiliParser已经下载了视频，返回成功结果
+        const fileName = path.basename(parseResult.videoUrl);
+        const destPath = path.join(UPLOAD_DIR, fileName);
+        
+        // 移动到uploads目录
+        if (!fs.existsSync(UPLOAD_DIR)) {
+          fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+        }
+        
+        try {
+          fs.copyFileSync(parseResult.videoUrl, destPath);
+          console.log(`视频已复制到: ${destPath}`);
+        } catch (e) {
+          console.error('复制文件失败:', e);
+        }
+        
+        return {
+          success: true,
+          data: {
+            fileId: generateId(),
+            fileName: fileName,
+            filePath: `/uploads/${fileName}`,
+            fileSize: fs.existsSync(destPath) ? fs.statSync(destPath).size : 0,
+            originalUrl: videoUrl,
+            title: parseResult.title,
+            description: parseResult.description,
+            coverUrl: parseResult.thumbnail,
+            author: parseResult.author,
+            metadata: parseResult.metadata
+          }
+        };
+      } else {
+        return parseResult;
+      }
+    }
 
     if (platformInfo.type === 'direct') {
       console.log('直链视频，直接下载');
