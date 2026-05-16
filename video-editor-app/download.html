@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频下载</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        
+        .video-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .video-info h2 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .video-info p {
+            color: #666;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        
+        .video-info strong {
+            color: #333;
+        }
+        
+        .download-btn {
+            display: block;
+            width: 100%;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .alternative {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .alternative h3 {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .alternative p {
+            font-size: 12px;
+            color: #999;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>视频下载完成！</h1>
+        
+        <div class="video-info">
+            <h2>视频信息</h2>
+            <p><strong>标题：</strong>用AI起了4个自媒体带货账号！</p>
+            <p><strong>作者：</strong>公司就我一个人-</p>
+            <p><strong>文件大小：</strong>32 MB</p>
+            <p><strong>清晰度：</strong>720P 高清</p>
+            <p><strong>时长：</strong>约 3 分 47 秒</p>
+        </div>
+        
+        <a href="/uploads/%E7%94%A8AI%E8%B5%B7%E4%BA%864%E4%B8%AA%E8%87%AA%E5%AA%92%E4%BD%93%E5%B8%A6%E8%B4%A7%E8%B4%A6%E5%8F%B7%EF%BC%81.mp4" 
+           download="用AI起了4个自媒体带货账号.mp4"
+           class="download-btn">
+            下载视频文件
+        </a>
+        
+        <div class="alternative">
+            <h3>直接访问视频：</h3>
+            <p id="videoUrl"></p>
+        </div>
+    </div>
+    
+    <script>
+        const encodedFilename = encodeURIComponent('用AI起了4个自媒体带货账号！.mp4');
+        const videoUrl = `http://localhost:3002/uploads/${encodedFilename}`;
+        document.getElementById('videoUrl').textContent = videoUrl;
+        
+        console.log('视频文件路径:', videoUrl);
+        
+        // 自动尝试触发下载
+        setTimeout(() => {
+            const link = document.createElement('a');
+            link.href = videoUrl;
+            link.download = '用AI起了4个自媒体带货账号.mp4';
+            console.log('准备下载...');
+        }, 1000);
+    </script>
+</body>
+</html>

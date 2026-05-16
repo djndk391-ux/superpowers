@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频播放器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .video-wrapper {
+            background: #000;
+            position: relative;
+        }
+        
+        video {
+            width: 100%;
+            display: block;
+        }
+        
+        .info {
+            padding: 25px 30px;
+            background: #f8f9fa;
+        }
+        
+        .info h2 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .info-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .info-item label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .info-item p {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 5px;
+        }
+        
+        .download-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .error-msg {
+            background: #fee;
+            color: #c33;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>用AI起了4个自媒体带货账号！</h1>
+            <p>作者：公司就我一个人-</p>
+        </div>
+        
+        <div class="video-wrapper">
+            <video id="videoPlayer" controls>
+                <p class="error-msg">如果视频无法播放，请检查浏览器是否支持HTML5视频</p>
+            </video>
+        </div>
+        
+        <div class="info">
+            <h2>视频信息</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>文件大小</label>
+                    <p>32 MB</p>
+                </div>
+                <div class="info-item">
+                    <label>分辨率</label>
+                    <p>720P 高清</p>
+                </div>
+                <div class="info-item">
+                    <label>播放量</label>
+                    <p>160,769</p>
+                </div>
+                <div class="info-item">
+                    <label>点赞数</label>
+                    <p>3,163</p>
+                </div>
+            </div>
+            
+            <a href="#" id="downloadLink" class="download-btn">
+                下载视频文件
+            </a>
+        </div>
+    </div>
+    
+    <script>
+        const videoElement = document.getElementById('videoPlayer');
+        const downloadLink = document.getElementById('downloadLink');
+        
+        const baseUrl = 'http://localhost:3002/uploads/';
+        const filename = encodeURIComponent('用AI起了4个自媒体带货账号！.mp4');
+        const videoUrl = baseUrl + filename;
+        const downloadUrl = baseUrl + filename;
+        
+        console.log('视频URL:', videoUrl);
+        
+        videoElement.src = videoUrl;
+        downloadLink.href = downloadUrl;
+        downloadLink.download = '用AI起了4个自媒体带货账号！.mp4';
+        
+        videoElement.addEventListener('error', function(e) {
+            console.error('视频加载失败:', e);
+            alert('视频加载失败！\n\n可能的原因：\n1. 视频文件不存在\n2. 文件名编码问题\n3. 服务器未正确启动\n\n请检查服务器是否在运行，或尝试重新解析视频。');
+        });
+        
+        videoElement.addEventListener('loadedmetadata', function() {
+            console.log('视频加载成功！时长:', this.duration, '秒');
+        });
+    </script>
+</body>
+</html>

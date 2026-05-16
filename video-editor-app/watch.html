@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频播放器 - 用AI起了4个自媒体带货账号！</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .video-wrapper {
+            background: #000;
+            position: relative;
+        }
+        
+        video {
+            width: 100%;
+            display: block;
+        }
+        
+        .info {
+            padding: 25px 30px;
+            background: #f8f9fa;
+        }
+        
+        .info h2 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .info-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .info-item label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .info-item p {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 5px;
+        }
+        
+        .download-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>用AI起了4个自媒体带货账号！</h1>
+            <p>作者：公司就我一个人- | B站 BV165QEBjE5P</p>
+        </div>
+        
+        <div class="success">
+            ✓ 视频下载成功！文件路径已简化处理
+        </div>
+        
+        <div class="video-wrapper">
+            <video controls autoplay>
+                <source src="/uploads/bilibili_video_bv165qebj5ep.mp4" type="video/mp4">
+                您的浏览器不支持视频播放。
+            </video>
+        </div>
+        
+        <div class="info">
+            <h2>视频信息</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>文件大小</label>
+                    <p>32 MB</p>
+                </div>
+                <div class="info-item">
+                    <label>分辨率</label>
+                    <p>720P 高清</p>
+                </div>
+                <div class="info-item">
+                    <label>播放量</label>
+                    <p>160,769</p>
+                </div>
+                <div class="info-item">
+                    <label>点赞数</label>
+                    <p>3,163</p>
+                </div>
+            </div>
+            
+            <a href="/uploads/bilibili_video_bv165qebj5ep.mp4" 
+               download="用AI起了4个自媒体带货账号.mp4" 
+               class="download-btn">
+                下载视频文件
+            </a>
+        </div>
+    </div>
+</body>
+</html>
