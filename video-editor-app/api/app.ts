@@ -35,6 +35,7 @@ app.use('/api/download', downloadRoutes)
 
 // 提供静态文件访问
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+app.use(express.static(path.join(__dirname, '..')))
 
 /**
  * health
