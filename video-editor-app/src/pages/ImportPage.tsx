@@ -9,8 +9,36 @@ const ImportPage = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'info' | 'success' | 'error', text: string } | null>(null);
+  const [mainDetectedPlatform, setMainDetectedPlatform] = useState<string | null>(null);
+  const [benchmarkDetectedPlatform, setBenchmarkDetectedPlatform] = useState<string | null>(null);
   const { setVideo, setBenchmark, resetBenchmark, videoUrl, fileName, benchmarkUrl, benchmarkFileName } = useVideoStore();
   const navigate = useNavigate();
+
+  // 链接预处理：清理抖音分享链接中的多余文本
+  const cleanVideoUrl = (url: string): string => {
+    let cleaned = url.trim();
+    
+    // 抖音分享链接通常包含多余文本，提取URL部分
+    const urlMatch = cleaned.match(/https?:\/\/[^\s]+/);
+    if (urlMatch) {
+      cleaned = urlMatch[0];
+    }
+    
+    return cleaned;
+  };
+
+  // 平台识别
+  const detectPlatform = (url: string): string | null => {
+    const cleaned = cleanVideoUrl(url);
+    if (cleaned.includes('douyin.com') || cleaned.includes('iesdouyin.com')) {
+      return '抖音';
+    } else if (cleaned.includes('bilibili.com') || cleaned.includes('b23.tv')) {
+      return 'B站';
+    } else if (cleaned.match(/\.(mp4|webm|mov|avi)$/i)) {
+      return '直链';
+    }
+    return null;
+  };
 
   const processFile = (file: File, type: 'main' | 'benchmark') => {
     setUploadProgress(0);
@@ -40,9 +68,11 @@ const ImportPage = () => {
 
   const handleUrlSubmit = async (e: React.FormEvent, type: 'main' | 'benchmark', url: string) => {
     e.preventDefault();
-    if (url.trim()) {
+    const cleanedUrl = cleanVideoUrl(url);
+    if (cleanedUrl) {
       setUploadProgress(0);
-      setStatusMessage({ type: 'info', text: '正在解析视频链接...' });
+      const platform = detectPlatform(cleanedUrl);
+      setStatusMessage({ type: 'info', text: platform ? `正在解析${platform}视频链接...` : '正在解析视频链接...' });
       
       try {
         // 调用后端API解析和下载视频
@@ -51,7 +81,7 @@ const ImportPage = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ url: url.trim() }),
+          body: JSON.stringify({ url: cleanedUrl }),
         });
 
         const result = await response.json();
@@ -156,11 +186,14 @@ const ImportPage = () => {
         {/* 使用提示 */}
         <div className="max-w-2xl mx-auto mb-8">
           <div className="flex items-start gap-3 px-6 py-4 rounded-2xl bg-gray-900/50 border border-gray-800">
-            <Info className="w-5 h-5 text-yellow-400 mt-0.5" />
+            <Info className="w-5 h-5 text-green-400 mt-0.5" />
             <div className="flex-1">
-              <p className="text-gray-300 text-sm font-medium mb-1">支持的链接格式</p>
+              <p className="text-gray-300 text-sm font-medium mb-1">✨ 支持的平台</p>
+              <p className="text-gray-400 text-xs mb-2">
+                🎵 抖音 · 📺 B站 · 🎬 MP4/WebM直链
+              </p>
               <p className="text-gray-500 text-xs">
-                推荐使用直接的视频链接（.mp4, .webm, .mov）。B站、抖音等平台视频需要获取真实视频地址或使用第三方解析。
+                直接粘贴抖音分享链接（支持短链），系统会自动解析无水印视频
               </p>
             </div>
           </div>
@@ -229,20 +262,33 @@ const ImportPage = () => {
                     <div className="relative">
                       <Link className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                       <input
-                        type="url"
+                        type="text"
                         value={mainVideoUrl}
-                        onChange={(e) => setMainVideoUrl(e.target.value)}
-                        placeholder="粘贴视频链接地址..."
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setMainVideoUrl(val);
+                          setMainDetectedPlatform(detectPlatform(val));
+                        }}
+                        placeholder="粘贴抖音/B站分享链接..."
                         className="input-field w-full pl-12 pr-4 py-4 rounded-xl text-white placeholder-gray-500"
                       />
+                      {mainDetectedPlatform && (
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                          <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full">
+                            {mainDetectedPlatform === '抖音' && '🎵 抖音'}
+                            {mainDetectedPlatform === 'B站' && '📺 B站'}
+                            {mainDetectedPlatform === '直链' && '🎬 直链'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <button
                       type="submit"
-                      disabled={!mainVideoUrl.trim()}
-                      className="w-full py-4 bg-dark-700 hover:bg-dark-600 rounded-xl font-medium text-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      disabled={!cleanVideoUrl(mainVideoUrl)}
+                      className="w-full py-4 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 rounded-xl font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-700 disabled:to-gray-700 flex items-center justify-center gap-2"
                     >
                       <Link className="w-5 h-5" />
-                      从链接导入
+                      {mainDetectedPlatform ? `解析${mainDetectedPlatform}视频` : '从链接导入'}
                     </button>
                   </form>
                 </div>
@@ -365,19 +411,32 @@ const ImportPage = () => {
                           <div className="relative">
                             <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                             <input
-                              type="url"
+                              type="text"
                               value={mainVideoUrl}
-                              onChange={(e) => setMainVideoUrl(e.target.value)}
-                              placeholder="粘贴视频链接..."
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setMainVideoUrl(val);
+                                setMainDetectedPlatform(detectPlatform(val));
+                              }}
+                              placeholder="粘贴抖音/B站分享链接..."
                               className="input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-white text-sm placeholder-gray-500"
                             />
+                            {mainDetectedPlatform && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs font-medium rounded-full">
+                                  {mainDetectedPlatform === '抖音' && '🎵'}
+                                  {mainDetectedPlatform === 'B站' && '📺'}
+                                  {mainDetectedPlatform === '直链' && '🎬'}
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <button
                             type="submit"
-                            disabled={!mainVideoUrl.trim()}
-                            className="w-full py-2.5 bg-dark-700 hover:bg-dark-600 rounded-lg text-sm font-medium text-gray-200 transition-all disabled:opacity-50"
+                            disabled={!cleanVideoUrl(mainVideoUrl)}
+                            className="w-full py-2.5 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-700 disabled:to-gray-700"
                           >
-                            导入链接
+                            {mainDetectedPlatform ? `解析${mainDetectedPlatform}视频` : '导入链接'}
                           </button>
                         </form>
                       </div>
@@ -465,19 +524,32 @@ const ImportPage = () => {
                           <div className="relative">
                             <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                             <input
-                              type="url"
+                              type="text"
                               value={benchmarkVideoUrlInput}
-                              onChange={(e) => setBenchmarkVideoUrlInput(e.target.value)}
-                              placeholder="粘贴对标视频链接..."
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setBenchmarkVideoUrlInput(val);
+                                setBenchmarkDetectedPlatform(detectPlatform(val));
+                              }}
+                              placeholder="粘贴抖音/B站分享链接..."
                               className="input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-white text-sm placeholder-gray-500"
                             />
+                            {benchmarkDetectedPlatform && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs font-medium rounded-full">
+                                  {benchmarkDetectedPlatform === '抖音' && '🎵'}
+                                  {benchmarkDetectedPlatform === 'B站' && '📺'}
+                                  {benchmarkDetectedPlatform === '直链' && '🎬'}
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <button
                             type="submit"
-                            disabled={!benchmarkVideoUrlInput.trim()}
-                            className="w-full py-2.5 bg-dark-700 hover:bg-dark-600 rounded-lg text-sm font-medium text-gray-200 transition-all disabled:opacity-50"
+                            disabled={!cleanVideoUrl(benchmarkVideoUrlInput)}
+                            className="w-full py-2.5 bg-gradient-to-r from-secondary to-primary hover:from-secondary/90 hover:to-primary/90 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-700 disabled:to-gray-700"
                           >
-                            导入链接
+                            {benchmarkDetectedPlatform ? `解析${benchmarkDetectedPlatform}视频` : '导入链接'}
                           </button>
                         </form>
                       </div>
