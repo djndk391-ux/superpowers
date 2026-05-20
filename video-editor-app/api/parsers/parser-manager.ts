@@ -6,6 +6,7 @@ import { PlatformDetector } from '../utils/platform-detector.js';
 import { BaseParser, ParseResult } from './base-parser.js';
 import { DirectVideoParser } from './direct-parser.js';
 import { BilibiliParser } from './bilibili-parser.js';
+import { DouyinParser } from './douyin-parser.js';
 
 export class ParserManager {
   private parsers: BaseParser[] = [];
@@ -14,7 +15,8 @@ export class ParserManager {
     // 注册解析器
     this.parsers = [
       new DirectVideoParser(),
-      new BilibiliParser()
+      new BilibiliParser(),
+      new DouyinParser()
     ];
   }
 

@@ -345,13 +345,13 @@ export class VideoParser {
     console.log(`识别到平台: ${platformInfo.name}`);
 
     // 优先使用我们专门的解析器管理器
-    if (platformInfo.type === 'bilibili') {
-      console.log('使用B站专门解析器...');
+    if (platformInfo.type === 'bilibili' || platformInfo.type === 'douyin') {
+      console.log(`使用${platformInfo.name}专门解析器...`);
       const parserManager = new ParserManager();
       const parseResult = await parserManager.parseVideoUrl(videoUrl);
       
       if (parseResult.success) {
-        // BilibiliParser已经下载了视频，返回成功结果
+        // 解析器已经下载了视频，返回成功结果
         const fileName = path.basename(parseResult.videoUrl);
         const destPath = path.join(UPLOAD_DIR, fileName);
         
