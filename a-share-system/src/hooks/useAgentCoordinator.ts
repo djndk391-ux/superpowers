@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useStore } from '@/store/useStore';
 import { AgentName } from '@/types';
 import {
@@ -19,9 +19,13 @@ export const useAgentCoordinator = () => {
     resetAnalysis,
     analysisState
   } = useStore();
+  
+  const isExecutingRef = useRef(false);
 
   // 执行Agent工作
   const executeAgent = useCallback(async (agentName: AgentName) => {
+    console.log(`[Agent] Executing: ${agentName}`);
+    
     // 更新Agent状态为工作中
     updateAgent(agentName, { 
       status: 'working', 
@@ -40,18 +44,23 @@ export const useAgentCoordinator = () => {
     switch (agentName) {
       case 'dataCollector':
         result = generateMockMarketData();
+        console.log('[Data] Market data generated:', result);
         break;
       case 'marketAnalyst':
         result = generateMockAnalysis();
+        console.log('[Data] Analysis generated:', result);
         break;
       case 'riskAssessor':
         result = generateMockRiskAssessment();
+        console.log('[Data] Risk assessment generated:', result);
         break;
       case 'strategyGenerator':
         result = generateMockStrategy();
+        console.log('[Data] Strategy generated:', result);
         break;
       case 'coordinator':
         result = generateMockDecision();
+        console.log('[Data] Decision generated:', result);
         break;
     }
 
@@ -67,25 +76,55 @@ export const useAgentCoordinator = () => {
 
   // 开始完整的分析流程
   const runFullAnalysis = useCallback(async () => {
-    // 重置状态
-    resetAgents();
-    resetAnalysis();
-    
-    // 开始分析
-    startAnalysis();
-
-    const agentOrder: AgentName[] = ['dataCollector', 'marketAnalyst', 'riskAssessor', 'strategyGenerator', 'coordinator'];
-
-    for (const agentName of agentOrder) {
-      if (!analysisState.isAnalyzing) break;
-      
-      const result = await executeAgent(agentName);
-      completeStep(agentName, result);
+    if (isExecutingRef.current) {
+      console.log('[Warning] Already executing, skipping...');
+      return;
     }
-  }, [resetAgents, resetAnalysis, startAnalysis, executeAgent, completeStep, analysisState.isAnalyzing]);
+    
+    isExecutingRef.current = true;
+    console.log('[Analysis] Starting full analysis...');
+    
+    try {
+      // 重置状态
+      resetAgents();
+      resetAnalysis();
+      
+      // 开始分析
+      startAnalysis();
+      console.log('[Analysis] Analysis started');
+
+      const agentOrder: AgentName[] = ['dataCollector', 'marketAnalyst', 'riskAssessor', 'strategyGenerator', 'coordinator'];
+
+      for (let i = 0; i < agentOrder.length; i++) {
+        const agentName = agentOrder[i];
+        
+        // 获取最新状态
+        const currentState = useStore.getState().analysisState;
+        if (!currentState.isAnalyzing) {
+          console.log('[Analysis] Analysis stopped');
+          break;
+        }
+        
+        console.log(`[Analysis] Step ${i + 1}/${agentOrder.length}: ${agentName}`);
+        
+        const result = await executeAgent(agentName);
+        completeStep(agentName, result);
+        
+        console.log(`[Analysis] Step ${i + 1} completed`);
+      }
+      
+      console.log('[Analysis] Full analysis complete!');
+    } catch (error) {
+      console.error('[Analysis] Error:', error);
+    } finally {
+      isExecutingRef.current = false;
+    }
+  }, [resetAgents, resetAnalysis, startAnalysis, executeAgent, completeStep]);
 
   // 重置分析
   const resetAll = useCallback(() => {
+    console.log('[Analysis] Resetting...');
+    isExecutingRef.current = false;
     resetAgents();
     resetAnalysis();
   }, [resetAgents, resetAnalysis]);

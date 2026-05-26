@@ -10,10 +10,59 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// 添加一个快速测试按钮组件
+const QuickTestButton = () => {
+  const { setDecision, setMarketData, setAnalysis, setRiskAssessment, setStrategy, updateAgent, setAnalysisState } = useStore();
+  const { generateMockMarketData, generateMockAnalysis, generateMockRiskAssessment, generateMockStrategy, generateMockDecision } = require('@/utils/mockData');
+  
+  const runQuickTest = () => {
+    console.log('[Quick Test] Running...');
+    const marketData = generateMockMarketData();
+    const analysisData = generateMockAnalysis();
+    const riskData = generateMockRiskAssessment();
+    const strategyData = generateMockStrategy();
+    const decisionData = generateMockDecision();
+    
+    console.log('[Quick Test] Data generated:', { marketData, analysisData, riskData, strategyData, decisionData });
+    
+    setMarketData(marketData);
+    setAnalysis(analysisData);
+    setRiskAssessment(riskData);
+    setStrategy(strategyData);
+    setDecision(decisionData);
+    
+    // 更新所有 agent 状态
+    ['dataCollector', 'marketAnalyst', 'riskAssessor', 'strategyGenerator', 'coordinator'].forEach(id => {
+      updateAgent(id as any, { status: 'completed', progress: 100, lastUpdate: new Date().toLocaleTimeString('zh-CN') });
+    });
+    
+    setAnalysisState({ isAnalyzing: false, step: 6 });
+    console.log('[Quick Test] Complete!');
+  };
+  
+  return (
+    <button
+      onClick={runQuickTest}
+      className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium transition-colors text-sm"
+    >
+      ⚡ 快速测试
+    </button>
+  );
+};
+
 export const Dashboard: React.FC = () => {
   const { agents, analysisState, decision, marketData, analysis, riskAssessment, strategy, setActivePage } = useStore();
   const { runFullAnalysis, resetAll, isAnalyzing, currentStep, totalSteps } = useAgentCoordinator();
   const [stepLog, setStepLog] = useState<string[]>([]);
+  
+  // 调试信息显示
+  console.log('[Dashboard] State:', { 
+    hasDecision: !!decision, 
+    hasMarketData: !!marketData, 
+    hasAnalysis: !!analysis,
+    step: analysisState.step,
+    isAnalyzing 
+  });
 
   // 监听分析状态变化，记录日志
   useEffect(() => {
@@ -57,6 +106,7 @@ export const Dashboard: React.FC = () => {
                 查看详情
               </button>
             )}
+            <QuickTestButton />
             <button
               onClick={isAnalyzing ? resetAll : runFullAnalysis}
               disabled={isAnalyzing && currentStep > 1}
