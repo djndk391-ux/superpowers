@@ -21,20 +21,24 @@ const QuickTestButton = () => {
   const runQuickTest = async () => {
     console.log('[Quick Test] Running...');
     try {
+      console.log('[Quick Test] Calling DataCollectorAgent.quickTest()...');
       const snapshot: MarketSnapshot = await DataCollectorAgent.quickTest();
+      console.log('[Quick Test] Snapshot received!');
+      console.log('[Quick Test] Snapshot details:', JSON.stringify(snapshot, null, 2));
+      
       const analysisData = generateMockAnalysis();
       const riskData = generateMockRiskAssessment();
       const strategyData = generateMockStrategy();
       const decisionData = generateMockDecision();
       
-      console.log('[Quick Test] Data generated:', { snapshot, analysisData, riskData, strategyData, decisionData });
-      
+      console.log('[Quick Test] Setting store data...');
       setMarketData({ ...snapshot, ...snapshot.rawData });
       setAnalysis(analysisData);
       setRiskAssessment(riskData);
       setStrategy(strategyData);
       setDecision(decisionData);
       
+      console.log('[Quick Test] Updating agents status...');
       ['dataCollector', 'marketAnalyst', 'riskAssessor', 'strategyGenerator', 'coordinator'].forEach(id => {
         updateAgent(id as any, { status: 'completed', progress: 100, lastUpdate: new Date().toLocaleTimeString('zh-CN') });
       });
@@ -67,6 +71,7 @@ export const Dashboard: React.FC = () => {
     hasDecision: !!decision, 
     hasMarketData: !!marketData, 
     hasAnalysis: !!analysis,
+    hasSnapshot,
     step: analysisState.step,
     isAnalyzing 
   });
@@ -175,39 +180,42 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="space-y-6">
+          {/* 数据收集Agent测试评估区域 */}
           <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
             <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              🧪 数据收集Agent 测试评估
+              🔬 数据收集Agent测试评估
             </h2>
             
             {hasSnapshot && (
-              <>
-                <div className="bg-slate-900/50 rounded-xl p-4 mb-4 border border-slate-700">
+              <div className="space-y-4">
+                {/* 数据源信息 */}
+                <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
                   <h3 className="text-sm font-semibold text-white mb-3">🌐 数据源信息</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">当前数据源</span>
-                      <span className="text-green-400 font-medium">{(marketData as any)?.dataSource}</span>
+                      <span className="text-green-400 font-medium">{(marketData as any)?.dataSource || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">采集时间</span>
-                      <span className="text-blue-400">{(marketData as any)?.collectionTime ? new Date((marketData as any).collectionTime).toLocaleString('zh-CN') : 'N/A'}</span>
+                      <span className="text-blue-400">
+                        {(marketData as any)?.collectionTime ? new Date((marketData as any).collectionTime).toLocaleString('zh-CN') : 'N/A'}
+                      </span>
                     </div>
-                    {(() => {
-                      const timeDiff = (marketData as any)?.collectionTime ? 
-                        (Date.now() - new Date((marketData as any).collectionTime).getTime()) / 1000 / 60 / 60 : 0;
-                      let freshness = '🟢 非常新鲜';
-                      if (timeDiff > 1) freshness = '🟢 新鲜';
-                      if (timeDiff > 6) freshness = '🟡 可接受';
-                      if (timeDiff > 24) freshness = '🟠 较旧';
-                      if (timeDiff > 720) freshness = '🔴 过期';
-                      return (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-400">数据新鲜度</span>
-                          <span className="text-yellow-400">{freshness}</span>
-                        </div>
-                      );
-                    })()}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">数据新鲜度</span>
+                      <span className="text-yellow-400">
+                        {(() => {
+                          if (!(marketData as any)?.collectionTime) return 'N/A';
+                          const timeDiff = (Date.now() - new Date((marketData as any).collectionTime.getTime()) / 1000 / 60 / 60;
+                          if (timeDiff < 1) return '🟢 非常新鲜';
+                          if (timeDiff < 6) return '🟢 新鲜';
+                          if (timeDiff < 24) return '🟡 可接受';
+                          if (timeDiff < 720) return '🟠 较旧';
+                          return '🔴 过期';
+                        })()}
+                      </span>
+                    </div>
                   </div>
                   
                   {(marketData as any)?.allDataSources && (
@@ -217,8 +225,8 @@ export const Dashboard: React.FC = () => {
                         {(marketData as any).allDataSources.map((ds: any, i: number) => (
                           <div key={i} className="flex justify-between text-xs">
                             <span className="text-gray-300">{ds.name}</span>
-                            <span className={ds.isAvailable ? "text-green-400" : "text-red-400"}>
-                              {ds.isAvailable ? "✓ 可用" : "✗ 不可用"} (优先级{ds.priority})
+                            <span className={ds.isAvailable ? 'text-green-400' : 'text-red-400'}>
+                              {ds.isAvailable ? '✅ 可用' : '❌ 不可用'} (优先级{ds.priority})
                             </span>
                           </div>
                         ))}
@@ -227,29 +235,76 @@ export const Dashboard: React.FC = () => {
                   )}
                 </div>
                 
-                <div className="bg-slate-900/50 rounded-xl p-4 mb-4 border border-slate-700">
+                {/* 数据统计 */}
+                <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
                   <h3 className="text-sm font-semibold text-white mb-3">📊 数据统计</h3>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-slate-800/50 rounded-lg p-3 text-center">
                       <div className="text-lg mb-1">📈</div>
-                      <div className="text-white font-medium text-sm">{(marketData as any)?.rawData?.sectors?.length || 0}</div>
+                      <div className="text-white font-medium text-sm">
+                        {(marketData as any)?.rawData?.sectors?.length || 0}
+                      </div>
                       <div className="text-gray-500 text-xs">板块</div>
                     </div>
                     <div className="bg-slate-800/50 rounded-lg p-3 text-center">
                       <div className="text-lg mb-1">📉</div>
-                      <div className="text-white font-medium text-sm">{(marketData as any)?.rawData?.stocks?.length || 0}</div>
+                      <div className="text-white font-medium text-sm">
+                        {(marketData as any)?.rawData?.stocks?.length || 0}
+                      </div>
                       <div className="text-gray-500 text-xs">股票</div>
                     </div>
                     <div className="bg-slate-800/50 rounded-lg p-3 text-center">
                       <div className="text-lg mb-1">📰</div>
-                      <div className="text-white font-medium text-sm">{(marketData as any)?.rawData?.news?.length || 0}</div>
+                      <div className="text-white font-medium text-sm">
+                        {(marketData as any)?.rawData?.news?.length || 0}
+                      </div>
                       <div className="text-gray-500 text-xs">新闻</div>
                     </div>
                   </div>
+                  
+                  {/* 详细数据类型检查 */}
+                  {(marketData as any)?.rawData && (
+                    <div className="mt-4 pt-3 border-t border-slate-700">
+                      <h4 className="text-xs font-semibold text-gray-400 mb-2">数据类型详情</h4>
+                      <div className="space-y-1 text-xs">
+                        {(marketData as any).rawData.sectors && (marketData as any).rawData.sectors.length > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">板块数据类型:</span>
+                            <span className={
+                              (marketData as any).rawData.sectors[0].dataType?.includes('真实') ? 'text-green-400' : 'text-orange-400'
+                            }>
+                              {(marketData as any).rawData.sectors[0].dataType || '未标注'}
+                            </span>
+                          </div>
+                        ))}
+                        {(marketData as any).rawData.stocks && (marketData as any).rawData.stocks.length > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">股票数据类型:</span>
+                            <span className={
+                              (marketData as any).rawData.stocks[0].dataType?.includes('真实') ? 'text-green-400' : 'text-orange-400'
+                            }>
+                              {(marketData as any).rawData.stocks[0].dataType || '未标注'}
+                            </span>
+                          </div>
+                        ))}
+                        {(marketData as any).rawData.news && (marketData as any).rawData.news.length > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">新闻数据类型:</span>
+                            <span className={
+                              (marketData as any).rawData.news[0].dataType?.includes('真实') ? 'text-green-400' : 'text-orange-400'
+                            }>
+                              {(marketData as any).rawData.news[0].dataType || '未标注'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
+                {/* 市场特征 */}
                 {(marketData as any)?.features && (
-                  <div className="bg-slate-900/50 rounded-xl p-4 mb-4 border border-slate-700">
+                  <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
                     <h3 className="text-sm font-semibold text-white mb-3">📈 市场特征</h3>
                     <div className="space-y-2">
                       {(marketData as any).features.map((feature: any, i: number) => (
@@ -265,25 +320,26 @@ export const Dashboard: React.FC = () => {
                   </div>
                 )}
                 
+                {/* 总体评估 */}
                 <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
                   <h3 className="text-sm font-semibold text-white mb-3">📋 总体评估</h3>
                   {(() => {
                     const isRealDataSource = (marketData as any)?.dataSource === '东方财富' || (marketData as any)?.dataSource === '同花顺';
                     const timeDiff = (marketData as any)?.collectionTime ? 
-                      (Date.now() - new Date((marketData as any).collectionTime).getTime()) / 1000 / 60 / 60 : 0;
+                      (Date.now() - new Date((marketData as any).collectionTime.getTime()) / 1000 / 60 / 60 : 999;
                     const isFresh = timeDiff < 24;
-
-                    let rating = '⚠️ 需改进';
+                    
+                    let rating = '⚠️ 需要改进';
                     let colorClass = 'text-orange-400 bg-orange-900/30 border-orange-700';
                     
                     if (isRealDataSource && isFresh) {
-                      rating = '✅ 优秀！使用真实数据源，数据新鲜';
+                      rating = '✅ 优秀！使用真实API，数据新鲜';
                       colorClass = 'text-green-400 bg-green-900/30 border-green-700';
                     } else if (isRealDataSource) {
-                      rating = '⚠️ 良好！使用真实数据源，但数据可能不是最新';
+                      rating = '⚠️ 良好！使用真实API，但数据可能不是最新';
                       colorClass = 'text-yellow-400 bg-yellow-900/30 border-yellow-700';
                     } else if (isFresh) {
-                      rating = '⚠️ 良好！数据新鲜，但使用备用数据源';
+                      rating = '⚠️ 良好！数据新鲜，但使用模拟数据';
                       colorClass = 'text-yellow-400 bg-yellow-900/30 border-yellow-700';
                     }
                     
@@ -291,23 +347,30 @@ export const Dashboard: React.FC = () => {
                       <div className={`rounded-lg p-3 border ${colorClass}`}>
                         <p className="text-sm font-medium">{rating}</p>
                         <div className="mt-2 pt-2 border-t border-slate-700">
-                          <p className="text-xs text-gray-400">数据源：{isRealDataSource ? '真实API' : '模拟数据'}</p>
-                          <p className="text-xs text-gray-400">数据延迟：{timeDiff.toFixed(2)}小时</p>
+                          <p className="text-xs text-gray-400">数据源类型: {isRealDataSource ? '真实API' : '模拟数据'}</p>
+                          <p className="text-xs text-gray-400">数据延迟: {timeDiff.toFixed(2)}小时</p>
                         </div>
                       </div>
                     );
                   })()}
                 </div>
-              </>
+              </div>
             )}
             
             {!hasSnapshot && marketData && (
               <div className="bg-slate-900/50 rounded-xl p-4 text-center text-gray-500">
-                数据格式不是完整的MarketSnapshot，点击"快速测试"来测试优化的数据收集Agent
+                数据格式不是完整的MarketSnapshot，点击"⚡ 快速测试来测试优化后的数据收集Agent！
+              </div>
+            )}
+            
+            {!marketData && (
+              <div className="bg-slate-900/50 rounded-xl p-4 text-center text-gray-500">
+                还没有数据，点击"⚡ 快速测试"来获取数据！
               </div>
             )}
           </div>
 
+          {/* 执行日志 */}
           <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
             <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
               📋 执行日志
@@ -338,6 +401,7 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
+          {/* 数据预览 */}
           {(marketData || analysis || riskAssessment || strategy) && (
             <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -364,7 +428,7 @@ export const Dashboard: React.FC = () => {
                       "text-xs font-medium",
                       item.data ? "text-green-300" : "text-gray-500"
                     )}>
-                      {item.data ? '✓ ' + item.label : item.label}
+                      {item.data ? "✓ " + item.label : item.label}
                     </div>
                   </div>
                 ))}
@@ -373,6 +437,7 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
 
+        {/* 决策展示区域 */}
         <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
           {decision ? (
             <DecisionDisplay decision={decision} />
@@ -383,9 +448,10 @@ export const Dashboard: React.FC = () => {
                 等待分析
               </h3>
               <p className="text-gray-400 max-w-md mb-6">
-                点击"开始分析"按钮，多Agent系统将协同工作，为您生成专业的交易决策报告
+                点击"▶ 开始分析按钮，多Agent系统将协同工作，为您生成专业的交易决策报告
               </p>
               
+              {/* 流程示意 */}
               <div className="w-full bg-slate-700/50 rounded-xl p-4 mb-6">
                 <h4 className="text-sm font-semibold text-gray-300 mb-3">分析流程</h4>
                 <div className="flex items-center justify-between gap-1">
@@ -422,6 +488,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* 快速导航 */}
       {decision && (
         <div className="max-w-7xl mx-auto mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
@@ -444,3 +511,4 @@ export const Dashboard: React.FC = () => {
     </div>
   );
 };
+
