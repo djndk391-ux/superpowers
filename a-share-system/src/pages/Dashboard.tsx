@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { useAgentCoordinator } from '@/hooks/useAgentCoordinator';
@@ -13,144 +14,12 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// 数据源信息展示组件
-const DataSourceInfo = ({ snapshot }: { snapshot?: MarketSnapshot }) => {
-  if (!snapshot) return null;
-  
-  return (
-    <div className="bg-slate-800/70 rounded-xl p-4 border border-slate-700">
-      <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-        📡 数据源信息
-      </h3>
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-gray-400 text-sm">当前数据源</span>
-          <span className="text-green-400 text-sm font-medium flex items-center gap-1">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            {snapshot.dataSource}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-gray-400 text-sm">采集时间</span>
-          <span className="text-blue-400 text-sm">
-            {new Date(snapshot.collectionTime).toLocaleString('zh-CN')}
-          </span>
-        </div>
-        {snapshot.allDataSources && (
-          <div className="mt-2 pt-2 border-t border-slate-700">
-            <div className="text-xs text-gray-500 mb-1">所有数据源状态：</div>
-            <div className="flex flex-wrap gap-2">
-              {snapshot.allDataSources.map((ds, idx) => (
-                <div 
-                  key={idx}
-                  className={cn(
-                    "px-2 py-1 rounded text-xs",
-                    ds.isAvailable ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"
-                  )}
-                >
-                  {ds.name} (优先级{ds.priority})
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// 市场特征展示组件
-const MarketFeatures = ({ features }: { features?: MarketFeature[] }) => {
-  if (!features || features.length === 0) return null;
-  
-  const getFeatureColor = (type: string) => {
-    switch (type) {
-      case 'momentum': return 'blue';
-      case 'volatility': return 'yellow';
-      case 'liquidity': return 'green';
-      case 'sentiment': return 'purple';
-      default: return 'gray';
-    }
-  };
-  
-  return (
-    <div className="bg-slate-800/70 rounded-xl p-4 border border-slate-700">
-      <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-        📊 市场特征
-      </h3>
-      <div className="grid grid-cols-2 gap-2">
-        {features.map((feature) => (
-          <div 
-            key={feature.id}
-            className={cn(
-              "p-2 rounded-lg text-xs",
-              getFeatureColor(feature.type) === 'blue' && "bg-blue-900/30 border border-blue-800",
-              getFeatureColor(feature.type) === 'yellow' && "bg-yellow-900/30 border border-yellow-800",
-              getFeatureColor(feature.type) === 'green' && "bg-green-900/30 border border-green-800",
-              getFeatureColor(feature.type) === 'purple' && "bg-purple-900/30 border border-purple-800"
-            )}
-          >
-            <div className="font-medium text-white">{feature.name}</div>
-            <div className="text-gray-400 mt-1">{feature.description}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// 实时事件展示组件
-const RealtimeEvents = ({ events }: { events?: RealtimeMarketEvent[] }) => {
-  if (!events || events.length === 0) return null;
-  
-  const getEventColor = (severity: string) => {
-    switch (severity) {
-      case 'critical': return 'red';
-      case 'high': return 'orange';
-      case 'medium': return 'yellow';
-      case 'low': return 'blue';
-      default: return 'gray';
-    }
-  };
-  
-  return (
-    <div className="bg-slate-800/70 rounded-xl p-4 border border-slate-700">
-      <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-        ⚡ 实时事件 ({events.length})
-      </h3>
-      <div className="space-y-2 max-h-40 overflow-y-auto">
-        {events.slice(0, 5).map((event) => (
-          <div 
-            key={event.id}
-            className={cn(
-              "p-2 rounded-lg text-xs border-l-2",
-              getEventColor(event.severity) === 'red' && "bg-red-900/20 border-red-500",
-              getEventColor(event.severity) === 'orange' && "bg-orange-900/20 border-orange-500",
-              getEventColor(event.severity) === 'yellow' && "bg-yellow-900/20 border-yellow-500",
-              getEventColor(event.severity) === 'blue' && "bg-blue-900/20 border-blue-500"
-            )}
-          >
-            <div className="font-medium text-white">{event.title}</div>
-            <div className="text-gray-400 mt-1">{event.description}</div>
-            <div className="flex items-center gap-2 mt-1 text-gray-500">
-              <span>{event.source}</span>
-              <span>•</span>
-              <span>{new Date(event.timestamp).toLocaleTimeString('zh-CN')}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 // 添加一个快速测试按钮组件
 const QuickTestButton = () => {
   const { setDecision, setMarketData, setAnalysis, setRiskAssessment, setStrategy, updateAgent, setAnalysisState } = useStore();
   
   const runQuickTest = async () => {
     console.log('[Quick Test] Running...');
-    // 使用优化后的DataCollectorAgent的快速测试模式
     try {
       const snapshot: MarketSnapshot = await DataCollectorAgent.quickTest();
       const analysisData = generateMockAnalysis();
@@ -160,14 +29,12 @@ const QuickTestButton = () => {
       
       console.log('[Quick Test] Data generated:', { snapshot, analysisData, riskData, strategyData, decisionData });
       
-      // 保存完整snapshot同时也保存兼容的rawData
       setMarketData({ ...snapshot, ...snapshot.rawData });
       setAnalysis(analysisData);
       setRiskAssessment(riskData);
       setStrategy(strategyData);
       setDecision(decisionData);
       
-      // 更新所有 agent 状态
       ['dataCollector', 'marketAnalyst', 'riskAssessor', 'strategyGenerator', 'coordinator'].forEach(id => {
         updateAgent(id as any, { status: 'completed', progress: 100, lastUpdate: new Date().toLocaleTimeString('zh-CN') });
       });
@@ -194,10 +61,8 @@ export const Dashboard: React.FC = () => {
   const { runFullAnalysis, resetAll, isAnalyzing, currentStep, totalSteps } = useAgentCoordinator();
   const [stepLog, setStepLog] = useState<string[]>([]);
   
-  // 检查marketData是否包含完整的snapshot信息
   const hasSnapshot = marketData && 'features' in marketData && 'dataSource' in marketData;
   
-  // 调试信息显示
   console.log('[Dashboard] State:', { 
     hasDecision: !!decision, 
     hasMarketData: !!marketData, 
@@ -206,7 +71,6 @@ export const Dashboard: React.FC = () => {
     isAnalyzing 
   });
 
-  // 监听分析状态变化，记录日志
   useEffect(() => {
     if (isAnalyzing && analysisState.currentAgent) {
       const agent = agents.find(a => a.id === analysisState.currentAgent);
@@ -219,7 +83,6 @@ export const Dashboard: React.FC = () => {
     }
   }, [analysisState.currentAgent, isAnalyzing, decision, agents]);
 
-  // 重置日志
   useEffect(() => {
     if (!isAnalyzing && !decision) {
       setStepLog([]);
@@ -228,7 +91,6 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      {/* Header */}
       <div className="max-w-7xl mx-auto mb-8">
         <div className="flex items-center justify-between">
           <div>
@@ -275,9 +137,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-6">
-        {/* Left Column - Agents */}
         <div className="space-y-6">
-          {/* Agents Grid */}
           <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
             <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
               🤖 智能Agent集群
@@ -293,7 +153,6 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Progress Indicator */}
           {isAnalyzing && (
             <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
               <h3 className="text-lg font-semibold text-white mb-4">分析进度</h3>
@@ -315,9 +174,140 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Middle Column - Data & Logs */}
         <div className="space-y-6">
-          {/* Execution Log */}
+          <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              🧪 数据收集Agent 测试评估
+            </h2>
+            
+            {hasSnapshot && (
+              <>
+                <div className="bg-slate-900/50 rounded-xl p-4 mb-4 border border-slate-700">
+                  <h3 className="text-sm font-semibold text-white mb-3">🌐 数据源信息</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">当前数据源</span>
+                      <span className="text-green-400 font-medium">{(marketData as any)?.dataSource}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">采集时间</span>
+                      <span className="text-blue-400">{(marketData as any)?.collectionTime ? new Date((marketData as any).collectionTime).toLocaleString('zh-CN') : 'N/A'}</span>
+                    </div>
+                    {(() => {
+                      const timeDiff = (marketData as any)?.collectionTime ? 
+                        (Date.now() - new Date((marketData as any).collectionTime).getTime()) / 1000 / 60 / 60 : 0;
+                      let freshness = '🟢 非常新鲜';
+                      if (timeDiff > 1) freshness = '🟢 新鲜';
+                      if (timeDiff > 6) freshness = '🟡 可接受';
+                      if (timeDiff > 24) freshness = '🟠 较旧';
+                      if (timeDiff > 720) freshness = '🔴 过期';
+                      return (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">数据新鲜度</span>
+                          <span className="text-yellow-400">{freshness}</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  
+                  {(marketData as any)?.allDataSources && (
+                    <div className="mt-4 pt-4 border-t border-slate-700">
+                      <div className="text-xs text-gray-500 mb-2">所有数据源状态：</div>
+                      <div className="space-y-1">
+                        {(marketData as any).allDataSources.map((ds: any, i: number) => (
+                          <div key={i} className="flex justify-between text-xs">
+                            <span className="text-gray-300">{ds.name}</span>
+                            <span className={ds.isAvailable ? "text-green-400" : "text-red-400"}>
+                              {ds.isAvailable ? "✓ 可用" : "✗ 不可用"} (优先级{ds.priority})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="bg-slate-900/50 rounded-xl p-4 mb-4 border border-slate-700">
+                  <h3 className="text-sm font-semibold text-white mb-3">📊 数据统计</h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                      <div className="text-lg mb-1">📈</div>
+                      <div className="text-white font-medium text-sm">{(marketData as any)?.rawData?.sectors?.length || 0}</div>
+                      <div className="text-gray-500 text-xs">板块</div>
+                    </div>
+                    <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                      <div className="text-lg mb-1">📉</div>
+                      <div className="text-white font-medium text-sm">{(marketData as any)?.rawData?.stocks?.length || 0}</div>
+                      <div className="text-gray-500 text-xs">股票</div>
+                    </div>
+                    <div className="bg-slate-800/50 rounded-lg p-3 text-center">
+                      <div className="text-lg mb-1">📰</div>
+                      <div className="text-white font-medium text-sm">{(marketData as any)?.rawData?.news?.length || 0}</div>
+                      <div className="text-gray-500 text-xs">新闻</div>
+                    </div>
+                  </div>
+                </div>
+                
+                {(marketData as any)?.features && (
+                  <div className="bg-slate-900/50 rounded-xl p-4 mb-4 border border-slate-700">
+                    <h3 className="text-sm font-semibold text-white mb-3">📈 市场特征</h3>
+                    <div className="space-y-2">
+                      {(marketData as any).features.map((feature: any, i: number) => (
+                        <div key={i} className="bg-slate-800/50 rounded-lg p-2">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-white font-medium">{feature.name}</span>
+                            <span className="text-blue-400">{feature.value}</span>
+                          </div>
+                          <p className="text-gray-500 text-xs mt-1">{feature.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+                  <h3 className="text-sm font-semibold text-white mb-3">📋 总体评估</h3>
+                  {(() => {
+                    const isRealDataSource = (marketData as any)?.dataSource === '东方财富' || (marketData as any)?.dataSource === '同花顺';
+                    const timeDiff = (marketData as any)?.collectionTime ? 
+                      (Date.now() - new Date((marketData as any).collectionTime).getTime()) / 1000 / 60 / 60 : 0;
+                    const isFresh = timeDiff < 24;
+
+                    let rating = '⚠️ 需改进';
+                    let colorClass = 'text-orange-400 bg-orange-900/30 border-orange-700';
+                    
+                    if (isRealDataSource && isFresh) {
+                      rating = '✅ 优秀！使用真实数据源，数据新鲜';
+                      colorClass = 'text-green-400 bg-green-900/30 border-green-700';
+                    } else if (isRealDataSource) {
+                      rating = '⚠️ 良好！使用真实数据源，但数据可能不是最新';
+                      colorClass = 'text-yellow-400 bg-yellow-900/30 border-yellow-700';
+                    } else if (isFresh) {
+                      rating = '⚠️ 良好！数据新鲜，但使用备用数据源';
+                      colorClass = 'text-yellow-400 bg-yellow-900/30 border-yellow-700';
+                    }
+                    
+                    return (
+                      <div className={`rounded-lg p-3 border ${colorClass}`}>
+                        <p className="text-sm font-medium">{rating}</p>
+                        <div className="mt-2 pt-2 border-t border-slate-700">
+                          <p className="text-xs text-gray-400">数据源：{isRealDataSource ? '真实API' : '模拟数据'}</p>
+                          <p className="text-xs text-gray-400">数据延迟：{timeDiff.toFixed(2)}小时</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
+            
+            {!hasSnapshot && marketData && (
+              <div className="bg-slate-900/50 rounded-xl p-4 text-center text-gray-500">
+                数据格式不是完整的MarketSnapshot，点击"快速测试"来测试优化的数据收集Agent
+              </div>
+            )}
+          </div>
+
           <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
             <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
               📋 执行日志
@@ -348,16 +338,6 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* MarketSnapshot Data Display */}
-          {hasSnapshot && (
-            <div className="space-y-4">
-              <DataSourceInfo snapshot={marketData as unknown as MarketSnapshot} />
-              <MarketFeatures features={(marketData as unknown as MarketSnapshot).features} />
-              <RealtimeEvents events={(marketData as unknown as MarketSnapshot).realtimeEvents} />
-            </div>
-          )}
-
-          {/* Step Results Preview */}
           {(marketData || analysis || riskAssessment || strategy) && (
             <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -393,7 +373,6 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Right Column - Decision */}
         <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
           {decision ? (
             <DecisionDisplay decision={decision} />
@@ -407,7 +386,6 @@ export const Dashboard: React.FC = () => {
                 点击"开始分析"按钮，多Agent系统将协同工作，为您生成专业的交易决策报告
               </p>
               
-              {/* Flow Diagram */}
               <div className="w-full bg-slate-700/50 rounded-xl p-4 mb-6">
                 <h4 className="text-sm font-semibold text-gray-300 mb-3">分析流程</h4>
                 <div className="flex items-center justify-between gap-1">
@@ -444,7 +422,6 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Quick Navigation */}
       {decision && (
         <div className="max-w-7xl mx-auto mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
           {[

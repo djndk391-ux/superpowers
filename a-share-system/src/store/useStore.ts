@@ -37,7 +37,7 @@ interface AppState {
   setDecision: (data: TradingDecision) => void;
   
   // UI
-  activePage: 'dashboard' | 'market' | 'analysis' | 'risk' | 'strategy';
+  activePage: 'dashboard' | 'market' | 'analysis' | 'risk' | 'strategy',
   setActivePage: (page: AppState['activePage']) => void;
 }
 
