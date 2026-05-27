@@ -67,6 +67,68 @@ export interface MarketDataResponse {
   timestamp: string;
 }
 
+// 原始数据
+export interface RawMarketData {
+  sectors: any[];
+  stocks: any[];
+  fundFlow: any;
+  news: any[];
+}
+
+// 标准化数据
+export interface NormalizedMarketData {
+  sectors: SectorData[];
+  stocks: StockData[];
+  fundFlow: FundFlowData;
+  news: NewsItem[];
+}
+
+// 市场特征
+export interface MarketFeature {
+  id: string;
+  name: string;
+  value: number;
+  type: 'momentum' | 'volatility' | 'liquidity' | 'sentiment';
+  description: string;
+}
+
+// 市场事件
+export interface MarketEvent {
+  id: string;
+  type: 'hotspot_emergence' | 'volume_spike' | 'price_breakout' | 'news_trigger' | 'sector_rotation';
+  title: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+  relatedStocks: string[];
+  timestamp: string;
+}
+
+// 市场快照 - 最终输出
+export interface MarketSnapshot {
+  // 基础信息
+  id: string;
+  timestamp: string;
+  version: string;
+  
+  // 原始数据
+  rawData: MarketDataResponse;
+  
+  // 市场特征
+  features: MarketFeature[];
+  
+  // 市场事件
+  events: MarketEvent[];
+  
+  // 市场状态摘要
+  summary: {
+    marketDirection: 'bullish' | 'bearish' | 'neutral';
+    dominantSector: string;
+    hotStocks: string[];
+    sentimentScore: number;
+    volatilityScore: number;
+  };
+}
+
 // 热点板块
 export interface HotSpot {
   name: string;
