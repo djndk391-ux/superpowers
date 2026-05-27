@@ -2,12 +2,12 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useStore } from '@/store/useStore';
 import { AgentName } from '@/types';
 import {
-  generateMockMarketData,
   generateMockAnalysis,
   generateMockRiskAssessment,
   generateMockStrategy,
   generateMockDecision
 } from '@/utils/mockData';
+import { DataCollectorAgent } from '@/agents/dataCollectorAgent';
 
 export const useAgentCoordinator = () => {
   const { 
@@ -33,35 +33,61 @@ export const useAgentCoordinator = () => {
       lastUpdate: new Date().toLocaleTimeString('zh-CN')
     });
 
-    // 模拟进度更新
-    for (let i = 0; i <= 100; i += 25) {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      updateAgent(agentName, { progress: i });
-    }
-
     // 根据Agent类型生成对应的数据
     let result: any;
     switch (agentName) {
-      case 'dataCollector':
-        result = generateMockMarketData();
-        console.log('[Data] Market data generated:', result);
+      case 'dataCollector': {
+        // 使用优化后的DataCollectorAgent
+        const dataCollector = new DataCollectorAgent((progress) => {
+          // 实时更新进度到UI
+          updateAgent(agentName, { 
+            progress: progress.progressPercent,
+            lastUpdate: new Date().toLocaleTimeString('zh-CN')
+          });
+          console.log(`[DataCollector] ${progress.currentStep}: ${progress.stepDescription} (${progress.progressPercent}%)`);
+        });
+        
+        result = await dataCollector.collectMarketData();
+        console.log('[Data] Market data collected:', result);
         break;
-      case 'marketAnalyst':
+      }
+      case 'marketAnalyst': {
+        // 模拟其他Agent的进度
+        for (let i = 0; i <= 100; i += 25) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          updateAgent(agentName, { progress: i });
+        }
         result = generateMockAnalysis();
         console.log('[Data] Analysis generated:', result);
         break;
-      case 'riskAssessor':
+      }
+      case 'riskAssessor': {
+        for (let i = 0; i <= 100; i += 25) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          updateAgent(agentName, { progress: i });
+        }
         result = generateMockRiskAssessment();
         console.log('[Data] Risk assessment generated:', result);
         break;
-      case 'strategyGenerator':
+      }
+      case 'strategyGenerator': {
+        for (let i = 0; i <= 100; i += 25) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          updateAgent(agentName, { progress: i });
+        }
         result = generateMockStrategy();
         console.log('[Data] Strategy generated:', result);
         break;
-      case 'coordinator':
+      }
+      case 'coordinator': {
+        for (let i = 0; i <= 100; i += 25) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          updateAgent(agentName, { progress: i });
+        }
         result = generateMockDecision();
         console.log('[Data] Decision generated:', result);
         break;
+      }
     }
 
     // 更新Agent状态为完成

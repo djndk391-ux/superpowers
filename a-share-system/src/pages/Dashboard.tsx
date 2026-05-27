@@ -13,11 +13,13 @@ function cn(...inputs: ClassValue[]) {
 // 添加一个快速测试按钮组件
 const QuickTestButton = () => {
   const { setDecision, setMarketData, setAnalysis, setRiskAssessment, setStrategy, updateAgent, setAnalysisState } = useStore();
-  const { generateMockMarketData, generateMockAnalysis, generateMockRiskAssessment, generateMockStrategy, generateMockDecision } = require('@/utils/mockData');
+  const { generateMockAnalysis, generateMockRiskAssessment, generateMockStrategy, generateMockDecision } = require('@/utils/mockData');
+  const { DataCollectorAgent } = require('@/agents/dataCollectorAgent');
   
   const runQuickTest = () => {
     console.log('[Quick Test] Running...');
-    const marketData = generateMockMarketData();
+    // 使用优化后的DataCollectorAgent的快速测试模式
+    const marketData = DataCollectorAgent.quickTest();
     const analysisData = generateMockAnalysis();
     const riskData = generateMockRiskAssessment();
     const strategyData = generateMockStrategy();
