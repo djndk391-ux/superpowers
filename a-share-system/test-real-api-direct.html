@@ -1,0 +1,303 @@
+
+&lt;!DOCTYPE html&gt;
+&lt;html lang="zh-CN"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+  &lt;title&gt;真实API测试 - 数据收集Agent&lt;/title&gt;
+  &lt;style&gt;
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #e2e8f0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { color: #60a5fa; margin-bottom: 10px; text-align: center; }
+    .subtitle { text-align: center; color: #94a3b8; margin-bottom: 30px; }
+    .card {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid #475569;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 { color: #a78bfa; margin-bottom: 15px; font-size: 1.2rem; }
+    button {
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin: 5px;
+    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .status { padding: 10px; border-radius: 8px; margin: 10px 0; }
+    .status.success { background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #22c55e; }
+    .status.error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; }
+    .status.info { background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; color: #3b82f6; }
+    .status.warning { background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; color: #f59e0b; }
+    pre {
+      background: rgba(15, 23, 42, 0.8);
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.8rem;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 10px;
+    }
+    .data-type {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    .data-type.real { background: #22c55e; color: white; }
+    .data-type.mock { background: #f59e0b; color: white; }
+    .data-item {
+      background: rgba(15, 23, 42, 0.6);
+      padding: 12px;
+      border-radius: 6px;
+      margin: 8px 0;
+      border-left: 3px solid #60a5fa;
+    }
+    .negative { color: #ef4444; }
+    .positive { color: #22c55e; }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;div class="container"&gt;
+    &lt;h1&gt;🔍 真实API调试与测试&lt;/h1&gt;
+    &lt;p class="subtitle"&gt;排查为什么无法获取真实数据&lt;/p&gt;
+
+    &lt;div class="card"&gt;
+      &lt;h2&gt;🧪 测试操作&lt;/h2&gt;
+      &lt;div style="margin-bottom: 15px;"&gt;
+        &lt;button onclick="testEastMoneyAPI()"&gt;1️⃣ 测试东方财富板块API&lt;/button&gt;
+        &lt;button onclick="testStockAPI()"&gt;2️⃣ 测试个股行情API&lt;/button&gt;
+        &lt;button onclick="testAllAPIs()"&gt;🔄 全部测试&lt;/button&gt;
+      &lt;/div&gt;
+      &lt;div id="testStatus"&gt;&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;div class="card"&gt;
+      &lt;h2&gt;📡 API请求日志&lt;/h2&gt;
+      &lt;div id="apiLogs"&gt;等待测试...&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;div class="card"&gt;
+      &lt;h2&gt;📊 测试结果&lt;/h2&gt;
+      &lt;div id="testResults"&gt;&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;div class="card"&gt;
+      &lt;h2&gt;📝 问题排查&lt;/h2&gt;
+      &lt;div id="debugInfo"&gt;
+        &lt;p&gt;常见问题：&lt;/p&gt;
+        &lt;ul&gt;
+          &lt;li&gt;CORS跨域限制 - 浏览器中直接调用第三方API会被拦截&lt;/li&gt;
+          &lt;li&gt;需要后端代理服务&lt;/li&gt;
+          &lt;li&gt;或者使用JSONP（如果API支持）&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;script&gt;
+    let logs = [];
+
+    function addLog(message, type = 'info') {
+      const time = new Date().toLocaleTimeString('zh-CN');
+      logs.push({ time, message, type });
+      renderLogs();
+    }
+
+    function renderLogs() {
+      const logContainer = document.getElementById('apiLogs');
+      logContainer.innerHTML = logs.map(log =&gt; {
+        const icons = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️' };
+        return `&lt;div class="status ${log.type}"&gt;[${log.time}] ${icons[log.type]} ${log.message}&lt;/div&gt;`;
+      }).join('');
+    }
+
+    function showStatus(message, type = 'info') {
+      const statusDiv = document.getElementById('testStatus');
+      statusDiv.innerHTML = `&lt;div class="status ${type}"&gt;${message}&lt;/div&gt;`;
+    }
+
+    async function fetchWithDebug(url, description) {
+      addLog(`开始请求: ${description}`, 'info');
+      addLog(`URL: ${url}`, 'info');
+      
+      try {
+        console.log(`🌐 正在请求: ${url}`);
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'omit'
+        });
+        
+        addLog(`HTTP状态: ${response.status}`, response.ok ? 'success' : 'error');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        addLog(`响应成功! 数据类型: ${typeof data}`, 'success');
+        
+        return { success: true, data, url };
+        
+      } catch (error) {
+        addLog(`请求失败: ${error.message}`, 'error');
+        console.error('❌ 错误详情:', error);
+        
+        return { success: false, error: error.message, url };
+      }
+    }
+
+    async function testEastMoneyAPI() {
+      logs = [];
+      addLog('='.repeat(50), 'info');
+      addLog('开始测试东方财富板块API', 'info');
+      
+      const url = 'https://push2.eastmoney.com/api/qt/clist/get?pn=1&amp;pz=50&amp;po=1&amp;np=1&amp;fltt=2&amp;fid=f3&amp;fs=m:90+t:2+f:!50&amp;fields=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20,f21,f23,f24,f25,f26,f22,f33,f11,f62,f128,f136,f115,f152,f133,f108';
+      
+      const result = await fetchWithDebug(url, '板块数据');
+      
+      const resultsDiv = document.getElementById('testResults');
+      
+      if (result.success) {
+        showStatus('✅ 东方财富板块API调用成功！', 'success');
+        
+        let html = '&lt;h3&gt;📈 板块数据&lt;/h3&gt;';
+        
+        if (result.data &amp;&amp; result.data &amp;&amp; result.data.diff) {
+          const sectors = result.data.diff.slice(0, 6);
+          
+          html += '&lt;div style="display: grid; gap: 10px; margin-top: 10px;"&gt;';
+          
+          sectors.forEach((sector, idx) =&gt; {
+            const change = sector.f3;
+            const changeClass = change &gt;= 0 ? 'positive' : 'negative';
+            const changeStr = change &gt;= 0 ? `+${change.toFixed(2)}` : change.toFixed(2);
+            
+            html += `
+              &lt;div class="data-item"&gt;
+                &lt;div&gt;
+                  &lt;strong&gt;${idx + 1}. ${sector.f14}&lt;/strong&gt;
+                  &lt;span class="data-type real"&gt;真实API&lt;/span&gt;
+                &lt;/div&gt;
+                &lt;div style="margin-top: 8px;"&gt;
+                  &lt;span class="${changeClass}" style="font-weight: bold;"&gt;${changeStr}%&lt;/span&gt;
+                  &lt;span style="margin-left: 20px;"&gt;成交额: ${(sector.f6 / 100000000).toFixed(1)}亿&lt;/span&gt;
+                &lt;/div&gt;
+              &lt;/div&gt;
+            `;
+          });
+          
+          html += '&lt;/div&gt;';
+        } else {
+          html += '&lt;p&gt;数据格式不符合预期&lt;/p&gt;';
+        }
+        
+        html += '&lt;h3 style="margin-top: 20px;"&gt;📄 完整响应&lt;/h3&gt;';
+        html += `&lt;pre&gt;${JSON.stringify(result.data, null, 2)}&lt;/pre&gt;`;
+        
+        resultsDiv.innerHTML = html;
+        
+      } else {
+        showStatus(`❌ API调用失败: ${result.error}`, 'error');
+        
+        resultsDiv.innerHTML = `
+          &lt;div class="status error"&gt;
+            &lt;h3&gt;错误详情&lt;/h3&gt;
+            &lt;p&gt;${result.error}&lt;/p&gt;
+            &lt;h4 style="margin-top: 15px;"&gt;可能的原因：&lt;/h4&gt;
+            &lt;ul style="margin-left: 20px; margin-top: 10px;"&gt;
+              &lt;li&gt;CORS跨域限制（最常见）&lt;/li&gt;
+              &lt;li&gt;API地址变更或不可用&lt;/li&gt;
+              &lt;li&gt;网络连接问题&lt;/li&gt;
+            &lt;/ul&gt;
+          &lt;/div&gt;
+        `;
+      }
+    }
+
+    async function testStockAPI() {
+      logs = [];
+      addLog('='.repeat(50), 'info');
+      addLog('开始测试个股行情API', 'info');
+      
+      // 测试寒武纪 (300223)
+      const url = 'https://push2.eastmoney.com/api/qt/stock/get?secid=0.300223&amp;fields=f43,f44,f45,f46,f47,f48,f49,f50,f51,f52,f57,f58,f107,f116,f117,f127,f152,f161,f162,f163,f164,f165,f166,f167,f168,f169,f170,f171,f172,f173,f174,f175,f176,f177,f178,f179,f180,f181,f182,f183,f184,f185,f186,f187,f188,f189,f190,f191,f192,f193,f194,f195,f196,f197,f198,f199,f200,f201,f202,f203,f204,f205,f206,f207,f208,f209,f210,f211,f212,f213,f214,f215,f216,f217,f218,f219,f220,f221,f222,f223,f224,f225,f226,f227,f228,f229,f230,f231,f232,f233,f234,f235,f236,f237,f238,f239,f240,f241,f242,f243,f244,f245,f246,f247,f248,f249,f250,f251,f252,f253,f254,f255,f256,f257,f258,f259,f260,f261,f262,f263,f264,f265,f266,f267,f268,f269,f270,f271,f272,f273,f274,f275,f276,f277,f278,f279,f280,f281,f282,f283,f284,f285,f286,f287,f288,f289,f290,f291,f292,f293,f294,f295,f296,f297,f298,f299,f300,f301,f302,f303,f304,f305,f306,f307,f308,f309,f310,f311,f312,f313,f314,f315,f316,f317,f318,f319,f320,f321,f322,f323,f324,f325,f326,f327,f328,f329,f330,f331,f332,f333,f334,f335,f336,f337,f338,f339,f340,f341,f342,f343,f344,f345,f346,f347,f348,f349,f350,f351,f352,f353,f354,f355,f356,f357,f358,f359,f360,f361,f362,f363,f364,f365,f366,f367,f368,f369,f370,f371,f372,f373,f374,f375,f376,f377,f378,f379,f380,f381,f382,f383,f384,f385,f386,f387,f388,f389,f390,f391,f392,f393,f394,f395,f396,f397,f398,f399,f400,f401,f402,f403,f404,f405,f406,f407,f408,f409,f410,f411,f412,f413,f414,f415,f416,f417,f418,f419,f420,f421,f422,f423,f424,f425,f426,f427,f428,f429,f430,f431,f432,f433,f434,f435,f436,f437,f438,f439,f440,f441,f442,f443,f444,f445,f446,f447,f448,f449,f450,f451,f452,f453,f454,f455,f456,f457,f458,f459,f460,f461,f462,f463,f464,f465,f466,f467,f468,f469,f470,f471,f472,f473,f474,f475,f476,f477,f478,f479,f480,f481,f482,f483,f484,f485,f486,f487,f488,f489,f490,f491,f492,f493,f494,f495,f496,f497,f498,f499,f500';
+      
+      const result = await fetchWithDebug(url, '个股行情');
+      
+      const resultsDiv = document.getElementById('testResults');
+      
+      if (result.success) {
+        showStatus('✅ 个股API调用成功！', 'success');
+        
+        let html = '&lt;h3&gt;📊 个股行情数据&lt;/h3&gt;';
+        
+        if (result.data &amp;&amp; result.data) {
+          const stock = result.data;
+          const change = stock.f170;
+          const changeClass = change &gt;= 0 ? 'positive' : 'negative';
+          const changeStr = change &gt;= 0 ? `+${change.toFixed(2)}` : change.toFixed(2);
+          
+          html += `
+            &lt;div class="data-item"&gt;
+              &lt;div&gt;
+                &lt;strong&gt;${stock.f58} (300223)&lt;/strong&gt;
+                &lt;span class="data-type real"&gt;真实API&lt;/span&gt;
+              &lt;/div&gt;
+              &lt;div style="margin-top: 8px;"&gt;
+                &lt;span style="font-size: 1.5rem; font-weight: bold;"&gt;${stock.f43.toFixed(2)}元&lt;/span&gt;
+                &lt;span class="${changeClass}" style="margin-left: 20px; font-weight: bold; font-size: 1.2rem;"&gt;${changeStr}%&lt;/span&gt;
+              &lt;/div&gt;
+              &lt;div style="margin-top: 8px;"&gt;
+                &lt;span&gt;成交量: ${(stock.f47 / 100000000).toFixed(2)}亿&lt;/span&gt;
+              &lt;/div&gt;
+            &lt;/div&gt;
+          `;
+        }
+        
+        html += '&lt;h3 style="margin-top: 20px;"&gt;📄 完整响应&lt;/h3&gt;';
+        html += `&lt;pre&gt;${JSON.stringify(result.data, null, 2)}&lt;/pre&gt;`;
+        
+        resultsDiv.innerHTML = html;
+        
+      } else {
+        showStatus(`❌ API调用失败: ${result.error}`, 'error');
+        
+        resultsDiv.innerHTML = `
+          &lt;div class="status error"&gt;
+            &lt;h3&gt;错误详情&lt;/h3&gt;
+            &lt;p&gt;${result.error}&lt;/p&gt;
+          &lt;/div&gt;
+        `;
+      }
+    }
+
+    async function testAllAPIs() {
+      await testEastMoneyAPI();
+      await new Promise(r =&gt; setTimeout(r, 1000));
+      await testStockAPI();
+    }
+
+    console.log('🔧 调试页面已加载，点击按钮开始测试');
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
