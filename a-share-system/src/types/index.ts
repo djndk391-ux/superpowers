@@ -103,7 +103,55 @@ export interface MarketEvent {
   timestamp: string;
 }
 
-// 市场快照 - 最终输出
+// 事件严重程度
+export type EventSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+// 事件优先级
+export type EventPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+// 实时市场事件
+export interface RealtimeMarketEvent {
+  id: string;
+  type: string;
+  subType?: string;
+  title: string;
+  description: string;
+  severity: EventSeverity;
+  priority: EventPriority;
+  timestamp: string;
+  source: string;
+  relatedAssets?: string[];
+  metadata?: Record<string, any>;
+}
+
+// 事件流订阅
+export interface EventStreamSubscription {
+  id: string;
+  eventTypes?: string[];
+  callback: (event: RealtimeMarketEvent) => void;
+}
+
+// 数据源配置
+export interface DataSourceMetadata {
+  name: string;
+  updateFrequency: 'realtime' | 'intraday' | 'daily' | 'weekly';
+  dataFreshness: number; // 理想新鲜度（小时）
+  lastUpdate: string;
+}
+
+// 数据新鲜度报告
+export interface DataFreshnessReport {
+  collectionTime: string;
+  systemTime: string;
+  dataSources: DataSourceMetadata[];
+  staleDataFiltered: {
+    totalItems: number;
+    staleItems: number;
+  };
+  warnings: string[];
+}
+
+// 市场快照 - 最终输出（增强版）
 export interface MarketSnapshot {
   // 基础信息
   id: string;
@@ -119,6 +167,16 @@ export interface MarketSnapshot {
   // 市场事件
   events: MarketEvent[];
   
+  // 实时事件流
+  realtimeEvents?: RealtimeMarketEvent[];
+  
+  // 数据源信息
+  collectionTime: string;
+  dataSource: string;
+  activeDataSource?: string;
+  allDataSources?: { name: string; priority: number; isAvailable: boolean }[];
+  dataFreshnessReport?: DataFreshnessReport;
+  
   // 市场状态摘要
   summary: {
     marketDirection: 'bullish' | 'bearish' | 'neutral';
@@ -126,6 +184,7 @@ export interface MarketSnapshot {
     hotStocks: string[];
     sentimentScore: number;
     volatilityScore: number;
+    liquidityScore?: number;
   };
 }
 

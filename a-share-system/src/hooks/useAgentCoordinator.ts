@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useStore } from '@/store/useStore';
-import { AgentName } from '@/types';
+import { AgentName, MarketSnapshot } from '@/types';
 import {
   generateMockAnalysis,
   generateMockRiskAssessment,
@@ -47,8 +47,10 @@ export const useAgentCoordinator = () => {
           console.log(`[DataCollector] ${progress.currentStep}: ${progress.stepDescription} (${progress.progressPercent}%)`);
         });
         
-        result = await dataCollector.collectMarketData();
-        console.log('[Data] Market data collected:', result);
+        const snapshot: MarketSnapshot = await dataCollector.collectMarketData();
+        console.log('[Data] Market snapshot collected:', snapshot);
+        // 返回完整snapshot以及兼容的rawData
+        result = { ...snapshot, ...snapshot.rawData };
         break;
       }
       case 'marketAnalyst': {

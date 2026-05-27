@@ -5,41 +5,178 @@ import { AgentCard } from '@/components/AgentCard';
 import { DecisionDisplay } from '@/components/DecisionDisplay';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { MarketSnapshot, MarketFeature, RealtimeMarketEvent } from '@/types';
+import { generateMockAnalysis, generateMockRiskAssessment, generateMockStrategy, generateMockDecision } from '@/utils/mockData';
+import { DataCollectorAgent } from '@/agents/dataCollectorAgent';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// 数据源信息展示组件
+const DataSourceInfo = ({ snapshot }: { snapshot?: MarketSnapshot }) => {
+  if (!snapshot) return null;
+  
+  return (
+    <div className="bg-slate-800/70 rounded-xl p-4 border border-slate-700">
+      <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+        📡 数据源信息
+      </h3>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-gray-400 text-sm">当前数据源</span>
+          <span className="text-green-400 text-sm font-medium flex items-center gap-1">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            {snapshot.dataSource}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-gray-400 text-sm">采集时间</span>
+          <span className="text-blue-400 text-sm">
+            {new Date(snapshot.collectionTime).toLocaleString('zh-CN')}
+          </span>
+        </div>
+        {snapshot.allDataSources && (
+          <div className="mt-2 pt-2 border-t border-slate-700">
+            <div className="text-xs text-gray-500 mb-1">所有数据源状态：</div>
+            <div className="flex flex-wrap gap-2">
+              {snapshot.allDataSources.map((ds, idx) => (
+                <div 
+                  key={idx}
+                  className={cn(
+                    "px-2 py-1 rounded text-xs",
+                    ds.isAvailable ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"
+                  )}
+                >
+                  {ds.name} (优先级{ds.priority})
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// 市场特征展示组件
+const MarketFeatures = ({ features }: { features?: MarketFeature[] }) => {
+  if (!features || features.length === 0) return null;
+  
+  const getFeatureColor = (type: string) => {
+    switch (type) {
+      case 'momentum': return 'blue';
+      case 'volatility': return 'yellow';
+      case 'liquidity': return 'green';
+      case 'sentiment': return 'purple';
+      default: return 'gray';
+    }
+  };
+  
+  return (
+    <div className="bg-slate-800/70 rounded-xl p-4 border border-slate-700">
+      <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+        📊 市场特征
+      </h3>
+      <div className="grid grid-cols-2 gap-2">
+        {features.map((feature) => (
+          <div 
+            key={feature.id}
+            className={cn(
+              "p-2 rounded-lg text-xs",
+              getFeatureColor(feature.type) === 'blue' && "bg-blue-900/30 border border-blue-800",
+              getFeatureColor(feature.type) === 'yellow' && "bg-yellow-900/30 border border-yellow-800",
+              getFeatureColor(feature.type) === 'green' && "bg-green-900/30 border border-green-800",
+              getFeatureColor(feature.type) === 'purple' && "bg-purple-900/30 border border-purple-800"
+            )}
+          >
+            <div className="font-medium text-white">{feature.name}</div>
+            <div className="text-gray-400 mt-1">{feature.description}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// 实时事件展示组件
+const RealtimeEvents = ({ events }: { events?: RealtimeMarketEvent[] }) => {
+  if (!events || events.length === 0) return null;
+  
+  const getEventColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'red';
+      case 'high': return 'orange';
+      case 'medium': return 'yellow';
+      case 'low': return 'blue';
+      default: return 'gray';
+    }
+  };
+  
+  return (
+    <div className="bg-slate-800/70 rounded-xl p-4 border border-slate-700">
+      <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+        ⚡ 实时事件 ({events.length})
+      </h3>
+      <div className="space-y-2 max-h-40 overflow-y-auto">
+        {events.slice(0, 5).map((event) => (
+          <div 
+            key={event.id}
+            className={cn(
+              "p-2 rounded-lg text-xs border-l-2",
+              getEventColor(event.severity) === 'red' && "bg-red-900/20 border-red-500",
+              getEventColor(event.severity) === 'orange' && "bg-orange-900/20 border-orange-500",
+              getEventColor(event.severity) === 'yellow' && "bg-yellow-900/20 border-yellow-500",
+              getEventColor(event.severity) === 'blue' && "bg-blue-900/20 border-blue-500"
+            )}
+          >
+            <div className="font-medium text-white">{event.title}</div>
+            <div className="text-gray-400 mt-1">{event.description}</div>
+            <div className="flex items-center gap-2 mt-1 text-gray-500">
+              <span>{event.source}</span>
+              <span>•</span>
+              <span>{new Date(event.timestamp).toLocaleTimeString('zh-CN')}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // 添加一个快速测试按钮组件
 const QuickTestButton = () => {
   const { setDecision, setMarketData, setAnalysis, setRiskAssessment, setStrategy, updateAgent, setAnalysisState } = useStore();
-  const { generateMockAnalysis, generateMockRiskAssessment, generateMockStrategy, generateMockDecision } = require('@/utils/mockData');
-  const { DataCollectorAgent } = require('@/agents/dataCollectorAgent');
   
-  const runQuickTest = () => {
+  const runQuickTest = async () => {
     console.log('[Quick Test] Running...');
     // 使用优化后的DataCollectorAgent的快速测试模式
-    const marketData = DataCollectorAgent.quickTest();
-    const analysisData = generateMockAnalysis();
-    const riskData = generateMockRiskAssessment();
-    const strategyData = generateMockStrategy();
-    const decisionData = generateMockDecision();
-    
-    console.log('[Quick Test] Data generated:', { marketData, analysisData, riskData, strategyData, decisionData });
-    
-    setMarketData(marketData);
-    setAnalysis(analysisData);
-    setRiskAssessment(riskData);
-    setStrategy(strategyData);
-    setDecision(decisionData);
-    
-    // 更新所有 agent 状态
-    ['dataCollector', 'marketAnalyst', 'riskAssessor', 'strategyGenerator', 'coordinator'].forEach(id => {
-      updateAgent(id as any, { status: 'completed', progress: 100, lastUpdate: new Date().toLocaleTimeString('zh-CN') });
-    });
-    
-    setAnalysisState({ isAnalyzing: false, step: 6 });
-    console.log('[Quick Test] Complete!');
+    try {
+      const snapshot: MarketSnapshot = await DataCollectorAgent.quickTest();
+      const analysisData = generateMockAnalysis();
+      const riskData = generateMockRiskAssessment();
+      const strategyData = generateMockStrategy();
+      const decisionData = generateMockDecision();
+      
+      console.log('[Quick Test] Data generated:', { snapshot, analysisData, riskData, strategyData, decisionData });
+      
+      // 保存完整snapshot同时也保存兼容的rawData
+      setMarketData({ ...snapshot, ...snapshot.rawData });
+      setAnalysis(analysisData);
+      setRiskAssessment(riskData);
+      setStrategy(strategyData);
+      setDecision(decisionData);
+      
+      // 更新所有 agent 状态
+      ['dataCollector', 'marketAnalyst', 'riskAssessor', 'strategyGenerator', 'coordinator'].forEach(id => {
+        updateAgent(id as any, { status: 'completed', progress: 100, lastUpdate: new Date().toLocaleTimeString('zh-CN') });
+      });
+      
+      setAnalysisState({ isAnalyzing: false, step: 6 });
+      console.log('[Quick Test] Complete!');
+    } catch (error) {
+      console.error('[Quick Test] Error:', error);
+    }
   };
   
   return (
@@ -56,6 +193,9 @@ export const Dashboard: React.FC = () => {
   const { agents, analysisState, decision, marketData, analysis, riskAssessment, strategy, setActivePage } = useStore();
   const { runFullAnalysis, resetAll, isAnalyzing, currentStep, totalSteps } = useAgentCoordinator();
   const [stepLog, setStepLog] = useState<string[]>([]);
+  
+  // 检查marketData是否包含完整的snapshot信息
+  const hasSnapshot = marketData && 'features' in marketData && 'dataSource' in marketData;
   
   // 调试信息显示
   console.log('[Dashboard] State:', { 
@@ -175,14 +315,14 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Middle Column - Logs */}
+        {/* Middle Column - Data & Logs */}
         <div className="space-y-6">
           {/* Execution Log */}
-          <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700 h-full">
+          <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
             <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
               📋 执行日志
             </h2>
-            <div className="bg-slate-900 rounded-xl p-4 h-80 overflow-y-auto">
+            <div className="bg-slate-900 rounded-xl p-4 h-48 overflow-y-auto">
               {stepLog.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-gray-500">
                   <div className="text-4xl mb-3">⏳</div>
@@ -207,6 +347,15 @@ export const Dashboard: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* MarketSnapshot Data Display */}
+          {hasSnapshot && (
+            <div className="space-y-4">
+              <DataSourceInfo snapshot={marketData as unknown as MarketSnapshot} />
+              <MarketFeatures features={(marketData as unknown as MarketSnapshot).features} />
+              <RealtimeEvents events={(marketData as unknown as MarketSnapshot).realtimeEvents} />
+            </div>
+          )}
 
           {/* Step Results Preview */}
           {(marketData || analysis || riskAssessment || strategy) && (
