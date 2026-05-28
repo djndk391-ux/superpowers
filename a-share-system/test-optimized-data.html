@@ -1,0 +1,171 @@
+
+&lt;!DOCTYPE html&gt;
+&lt;html lang="zh-CN"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;title&gt;A股热点轮动 - 数据测试&lt;/title&gt;
+    &lt;style&gt;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { font-size: 2.5rem; background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .status-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+        .status-good { background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3); }
+        .status-warning { background: rgba(251, 191, 36, 0.1); border-color: rgba(251, 191, 36, 0.3); }
+        .status-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 12px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 24px; transition: all 0.3s; }
+        .card:hover { transform: translateY(-4px); border-color: rgba(96, 165, 250, 0.3); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .card-title { font-size: 1.1rem; font-weight: 600; }
+        .change-up { color: #22c55e; }
+        .change-down { color: #ef4444; }
+        .volume { color: #94a3b8; font-size: 0.9rem; margin-top: 8px; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; margin-left: 8px; }
+        .badge-real { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .badge-mock { background: rgba(251, 191, 36, 0.2); color: #fde68a; border: 1px solid rgba(251, 191, 36, 0.3); }
+        .btn { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: all 0.3s; }
+        .btn:hover { transform: scale(1.05); }
+        .stocks-list { margin-top: 12px; }
+        .stock-item { display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.05); }
+        .stock-item:first-child { border-top: none; }
+        .solutions { margin-top: 40px; }
+        .solutions h2 { margin-bottom: 20px; }
+        .solution-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .solution-card h3 { color: #60a5fa; margin-bottom: 12px; }
+        .solution-card code { background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div class="container"&gt;
+        &lt;div class="header"&gt;
+            &lt;h1&gt;📊 A股热点轮动交易系统 - 数据测试&lt;/h1&gt;
+            &lt;p style="margin-top: 12px; color: #94a3b8;"&gt;优化后的市场数据展示&lt;/p&gt;
+        &lt;/div&gt;
+
+        &lt;div class="status-card status-warning"&gt;
+            &lt;div class="status-title"&gt;⚠️ 当前状态&lt;/div&gt;
+            &lt;p&gt;网络环境受限，使用优化后的模拟数据（数据结构已匹配真实API）&lt;/p&gt;
+            &lt;button class="btn" onclick="refreshData()" style="margin-top: 16px;"&gt;🔄 刷新数据&lt;/button&gt;
+        &lt;/div&gt;
+
+        &lt;div id="data-source-info" class="status-card" style="margin-bottom: 24px;"&gt;&lt;/div&gt;
+
+        &lt;h2 style="margin-bottom: 20px;"&gt;📈 热门板块&lt;/h2&gt;
+        &lt;div id="sectors-grid" class="grid"&gt;&lt;/div&gt;
+
+        &lt;h2 style="margin: 40px 0 20px;"&gt;📊 龙头个股&lt;/h2&gt;
+        &lt;div id="stocks-grid" class="grid"&gt;&lt;/div&gt;
+
+        &lt;div class="solutions"&gt;
+            &lt;h2&gt;🛠️ 获取真实数据的解决方案&lt;/h2&gt;
+            &lt;div class="solution-card"&gt;
+                &lt;h3&gt;⭐ 方案一：在您的本地/服务器部署（推荐）&lt;/h3&gt;
+                &lt;p&gt;将代码复制到您自己的有网络环境的电脑/服务器上运行。&lt;/p&gt;
+                &lt;p style="margin-top: 12px;"&gt;&lt;code&gt;npm run server:dev&lt;/code&gt; &amp; &lt;code&gt;npm run client:dev&lt;/code&gt;&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div class="solution-card"&gt;
+                &lt;h3&gt;方案二：使用数据快照&lt;/h3&gt;
+                &lt;p&gt;在有网络的环境获取一次真实数据，保存为快照文件使用。&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div class="solution-card"&gt;
+                &lt;h3&gt;方案三：使用其他数据源&lt;/h3&gt;
+                &lt;p&gt;可以切换到新浪财经、腾讯财经等其他免费数据源。&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;p style="margin-top: 20px; color: #94a3b8;"&gt;📖 详细文档：查看 &lt;code&gt;网络API解决方案.md&lt;/code&gt;&lt;/p&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;script&gt;
+        async function fetchData() {
+            try {
+                const response = await fetch('http://localhost:3001/api/market-data');
+                const result = await response.json();
+                return result.data;
+            } catch (error) {
+                console.error('获取数据失败:', error);
+                return null;
+            }
+        }
+
+        function renderDataSourceInfo(data) {
+            const container = document.getElementById('data-source-info');
+            const isRealData = data.dataType === '真实API';
+            container.innerHTML = `
+                &lt;div class="status-title"&gt;📋 数据来源&lt;/div&gt;
+                &lt;p&gt;&lt;strong&gt;来源：&lt;/strong&gt;${data.dataSource}&lt;/p&gt;
+                &lt;p&gt;&lt;strong&gt;类型：&lt;/strong&gt;${data.dataType}&lt;/p&gt;
+                &lt;p&gt;&lt;strong&gt;采集时间：&lt;/strong&gt;${new Date(data.timestamp).toLocaleString('zh-CN')}&lt;/p&gt;
+            `;
+        }
+
+        function renderSectors(sectors) {
+            const container = document.getElementById('sectors-grid');
+            container.innerHTML = sectors.map(sector =&gt; {
+                const changeClass = sector.changePercent &gt;= 0 ? 'change-up' : 'change-down';
+                const changeSign = sector.changePercent &gt;= 0 ? '+' : '';
+                const badgeClass = sector.dataType === '真实API' ? 'badge-real' : 'badge-mock';
+                return `
+                    &lt;div class="card"&gt;
+                        &lt;div class="card-header"&gt;
+                            &lt;span class="card-title"&gt;${sector.name}&lt;/span&gt;
+                            &lt;span class="badge ${badgeClass}"&gt;${sector.dataType}&lt;/span&gt;
+                        &lt;/div&gt;
+                        &lt;div class="${changeClass}" style="font-size: 1.5rem; font-weight: 600;"&gt;
+                            ${changeSign}${sector.changePercent.toFixed(2)}%
+                        &lt;/div&gt;
+                        &lt;div class="volume"&gt;成交额：${(sector.volume / 100000000).toFixed(1)}亿&lt;/div&gt;
+                        &lt;div style="margin-top: 12px; color: #94a3b8; font-size: 0.85rem;"&gt;
+                            龙头：${sector.leaderStocks.join('、')}
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                `;
+            }).join('');
+        }
+
+        function renderStocks(stocks) {
+            const container = document.getElementById('stocks-grid');
+            container.innerHTML = stocks.map(stock =&gt; {
+                const changeClass = stock.changePercent &gt;= 0 ? 'change-up' : 'change-down';
+                const changeSign = stock.changePercent &gt;= 0 ? '+' : '';
+                const badgeClass = stock.dataType === '真实API' ? 'badge-real' : 'badge-mock';
+                return `
+                    &lt;div class="card"&gt;
+                        &lt;div class="card-header"&gt;
+                            &lt;span class="card-title"&gt;${stock.name} (${stock.code})&lt;/span&gt;
+                            &lt;span class="badge ${badgeClass}"&gt;${stock.dataType}&lt;/span&gt;
+                        &lt;/div&gt;
+                        &lt;div style="font-size: 1.5rem; font-weight: 600; margin-bottom: 8px;"&gt;
+                            ${stock.price.toFixed(2)}
+                        &lt;/div&gt;
+                        &lt;div class="${changeClass}" style="font-size: 1.2rem;"&gt;
+                            ${changeSign}${stock.changePercent.toFixed(2)}%
+                        &lt;/div&gt;
+                        &lt;div class="volume"&gt;成交量：${(stock.volume / 100000000).toFixed(1)}亿&lt;/div&gt;
+                    &lt;/div&gt;
+                `;
+            }).join('');
+        }
+
+        async function refreshData() {
+            const data = await fetchData();
+            if (data) {
+                renderDataSourceInfo(data);
+                renderSectors(data.sectors);
+                renderStocks(data.stocks);
+            }
+        }
+
+        // 页面加载时获取数据
+        refreshData();
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
