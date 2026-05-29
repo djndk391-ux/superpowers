@@ -188,12 +188,18 @@ export interface MarketSnapshot {
   };
 }
 
-// 热点板块
+// 热点板块（增强版）
 export interface HotSpot {
   name: string;
   strength: number;
   reasoning: string;
   sustainabilityScore: number;
+  // 新增多维度分析
+  momentumScore?: number;      // 动量分数
+  concentrationScore?: number; // 龙头股集中度
+  capitalActivity?: number;    // 资金活跃度
+  eventBoost?: number;         // 事件驱动强度
+  relatedEvents?: string[];    // 关联事件
 }
 
 // 龙头股
@@ -204,12 +210,33 @@ export interface LeaderStock {
   leadingScore: number;
 }
 
-// 市场分析响应
+// 市场分析响应（增强版）
 export interface AnalysisResponse {
   hotSpots: HotSpot[];
   sentimentScore: number;
   leaderStocks: LeaderStock[];
   observations: string[];
+  // 新增结构化分析
+  sectorRotation?: {
+    strongSectors: string[];      // 强势板块
+    weakSectors: string[];        // 弱势板块
+    potentialHotspots: string[];  // 潜在热点
+    rotationTrend: string;        // 轮动趋势描述
+  };
+  sentimentDetails?: {
+    limitUpCount: number;         // 涨停数量
+    limitDownCount: number;       // 跌停数量
+    consecutiveBoardCount: number;// 连板数量
+    friedBoardRate: number;       // 炸板率
+    concentrationRatio: number;   // 成交集中度
+  };
+  eventCorrelations?: {
+    [sectorName: string]: {
+      events: string[];
+      impact: 'positive' | 'negative' | 'neutral';
+      intensity: number;
+    }[];
+  };
 }
 
 // 风险因子
