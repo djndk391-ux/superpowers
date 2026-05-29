@@ -1,4 +1,3 @@
-
 import {
   MarketSnapshot,
   AnalysisResponse,
@@ -7,17 +6,23 @@ import {
   Candidate,
   EntryPoint,
   StopLoss,
-  PositionAllocation
+  PositionAllocation,
+  MarketRegime,
+  StrategyMode,
+  OpportunityScore,
+  RiskMapping,
+  SubStrategy,
+  StrategyReport
 } from '@/types';
 
 // 策略生成器配置
 export interface StrategyGeneratorConfig {
-  maxCandidates: number;              // 最大候选标的数
-  positionLimitPerStock: number;      // 单只股票最大仓位
-  maxTotalPosition: number;           // 最大总仓位
-  minRiskRewardRatio: number;         // 最小盈亏比
-  stopLossRange: [number, number];   // 止损幅度范围
-  takeProfitRange: [number, number]; // 止盈幅度范围
+  maxCandidates: number;
+  positionLimitPerStock: number;
+  maxTotalPosition: number;
+  minRiskRewardRatio: number;
+  stopLossRange: [number, number];
+  takeProfitRange: [number, number];
 }
 
 // 进度回调
@@ -36,9 +41,17 @@ const DEFAULT_CONFIG: StrategyGeneratorConfig = {
   takeProfitRange: [10, 30]
 };
 
+// 内部状态存储
+interface IngestedData {
+  snapshot: MarketSnapshot;
+  analysis: AnalysisResponse;
+  riskAssessment: RiskResponse;
+}
+
 export class StrategyGeneratorAgent {
   private config: StrategyGeneratorConfig;
   private onProgress?: (progress: StrategyGeneratorProgress) => void;
+  private ingestedData?: IngestedData;
 
   constructor(
     config: Partial<StrategyGeneratorConfig> = {},
@@ -68,90 +81,612 @@ export class StrategyGeneratorAgent {
     snapshot: MarketSnapshot,
     analysis: AnalysisResponse,
     riskAssessment: RiskResponse
-  ): Promise<StrategyResponse> {
-    console.log('[StrategyGenerator] 开始生成交易策略...');
+  ): Promise<StrategyReport> {
+    console.log('[StrategyGenerator] 深度优化策略生成开始...');
     
-    const totalSteps = 6;
+    const totalSteps = 8;
 
-    this.updateProgress(1, totalSteps, 'analyze_inputs', '正在分析市场分析和风险评估数据...');
-    const strategyType = this.determineStrategyType(riskAssessment);
+    // 步骤 1: 摄入市场分析数据
+    this.updateProgress(1, totalSteps, 'ingestMarketAnalysis', '摄入市场分析和风险评估数据...');
+    this.ingestMarketAnalysis(snapshot, analysis, riskAssessment);
 
-    this.updateProgress(2, totalSteps, 'select_candidates', '正在筛选优质候选标的...');
-    const candidates = this.selectCandidates(snapshot, analysis, riskAssessment);
+    // 步骤 2: 摄入风险报告
+    this.updateProgress(2, totalSteps, 'ingestRiskReport', '解析风险报告并进行风险映射...');
+    const riskMapping = this.ingestRiskReport(riskAssessment);
 
-    this.updateProgress(3, totalSteps, 'calculate_entry_points', '正在计算入场点位...');
-    const entryPoints = this.calculateEntryPoints(candidates, snapshot, strategyType);
+    // 步骤 3: 检测市场阶段
+    this.updateProgress(3, totalSteps, 'detectMarketRegime', '分析市场阶段与热点趋势...');
+    const { marketRegime, marketRegimeDescription } = this.detectMarketRegime(snapshot, analysis, riskAssessment);
 
-    this.updateProgress(4, totalSteps, 'set_stop_loss', '正在设置止损止盈策略...');
-    const stopLossStrategies = this.setStopLossTakeProfit(candidates, snapshot, strategyType);
+    // 步骤 4: 事件链因果映射
+    this.updateProgress(4, totalSteps, 'mapEventChainToStrategy', '构建事件链对策略的因果影响...');
+    const eventChainMap = this.mapEventChainToStrategy(snapshot, analysis);
 
-    this.updateProgress(5, totalSteps, 'allocate_positions', '正在进行仓位配置...');
-    const positionAllocation = this.allocatePositions(
-      candidates,
-      riskAssessment,
-      strategyType
+    // 步骤 5: 计算多维度机会评分
+    this.updateProgress(5, totalSteps, 'calculateOpportunityScores', '计算多维度机会评分...');
+    const opportunityScores = this.calculateOpportunityScores(analysis, snapshot);
+
+    // 步骤 6: 生成动态仓位规划
+    this.updateProgress(6, totalSteps, 'generateDynamicPositionPlan', '基于风险映射生成动态仓位规划...');
+    const candidates = this.selectCandidates(snapshot, analysis, riskAssessment, opportunityScores);
+    const dynamicPositionPlan = this.generateDynamicPositionPlan(candidates, riskMapping);
+
+    // 步骤 7: 策略优先级排序
+    this.updateProgress(7, totalSteps, 'prioritizeStrategies', '进行多策略优先级排序...');
+    const { dominantStrategy, secondaryStrategies } = this.prioritizeStrategies(
+      marketRegime,
+      riskMapping,
+      opportunityScores,
+      analysis
     );
 
-    this.updateProgress(6, totalSteps, 'finalize_strategy', '正在生成最终策略...');
-    const strategy = this.finalizeStrategy(
+    // 步骤 8: 生成深度结构化策略报告
+    this.updateProgress(8, totalSteps, 'generateStrategyReport', '生成深度结构化策略报告...');
+    const strategyReport = this.generateStrategyReport(
+      dominantStrategy,
+      secondaryStrategies,
+      marketRegime,
+      marketRegimeDescription,
+      riskMapping,
+      opportunityScores,
+      eventChainMap,
+      dynamicPositionPlan,
+      snapshot,
       analysis,
-      riskAssessment,
-      strategyType,
-      candidates,
-      entryPoints,
-      stopLossStrategies,
-      positionAllocation
+      candidates
     );
 
-    console.log('[StrategyGenerator] 策略生成完成:', strategy);
-    return strategy;
+    console.log('[StrategyGenerator] 深度优化策略生成完成！');
+    return strategyReport;
   }
 
-  // 根据风险评估确定策略类型
-  private determineStrategyType(riskAssessment: RiskResponse): 'aggressive' | 'moderate' | 'conservative' {
-    switch (riskAssessment.riskLevel) {
-      case 'low':
-        return 'aggressive';
-      case 'medium':
-        return 'moderate';
-      case 'high':
-        return 'conservative';
-      default:
-        return 'moderate';
-    }
-  }
-
-  // 筛选和评分候选标的
-  private selectCandidates(
+  // 步骤 1: 摄入市场分析数据
+  private ingestMarketAnalysis(
     snapshot: MarketSnapshot,
     analysis: AnalysisResponse,
     riskAssessment: RiskResponse
+  ): void {
+    this.ingestedData = {
+      snapshot,
+      analysis,
+      riskAssessment
+    };
+    console.log('[StrategyGenerator] 市场分析数据摄入完成');
+  }
+
+  // 步骤 2: 摄入风险报告并进行风险映射
+  private ingestRiskReport(riskAssessment: RiskResponse): RiskMapping {
+    // 根据风险级别进行风险映射
+    const riskMappings: Record<string, RiskMapping> = {
+      low: {
+        riskLevel: 'low',
+        maxPosition: 85,
+        singleStockMaxPosition: 25,
+        stopLossPercentage: 12,
+        takeProfitMultiple: 2.5,
+        recommendedMode: 'trend',
+        riskBudget: 30
+      },
+      medium: {
+        riskLevel: 'medium',
+        maxPosition: 60,
+        singleStockMaxPosition: 18,
+        stopLossPercentage: 8,
+        takeProfitMultiple: 2.0,
+        recommendedMode: 'relay',
+        riskBudget: 20
+      },
+      high: {
+        riskLevel: 'high',
+        maxPosition: 40,
+        singleStockMaxPosition: 12,
+        stopLossPercentage: 5,
+        takeProfitMultiple: 1.5,
+        recommendedMode: 'defensive',
+        riskBudget: 10
+      }
+    };
+
+    const mapping = riskMappings[riskAssessment.riskLevel] || riskMappings.medium;
+    console.log('[StrategyGenerator] 风险映射完成:', mapping);
+    return mapping;
+  }
+
+  // 步骤 3: 检测市场阶段
+  private detectMarketRegime(
+    snapshot: MarketSnapshot,
+    analysis: AnalysisResponse,
+    riskAssessment: RiskResponse
+  ): { marketRegime: MarketRegime; marketRegimeDescription: string } {
+    const sentimentScore = analysis.sentimentScore;
+    const volatility = riskAssessment.volatilityScore;
+    const hasHotspots = analysis.hotSpots.filter(h => h.strength >= 60).length;
+
+    let regime: MarketRegime = 'consolidation';
+    let description = '';
+
+    if (sentimentScore >= 70 && hasHotspots >= 2) {
+      regime = 'trending_bullish';
+      description = '市场处于趋势上涨阶段，情绪乐观，热点明确';
+    } else if (sentimentScore <= 30 && volatility >= 60) {
+      regime = 'trending_bearish';
+      description = '市场处于趋势下跌阶段，情绪悲观，波动加剧';
+    } else if (sentimentScore >= 60 && sentimentScore < 70) {
+      regime = 'rally';
+      description = '市场处于反弹阶段，情绪修复，关注持续性';
+    } else if (sentimentScore >= 40 && sentimentScore < 60 && volatility < 50) {
+      regime = 'consolidation';
+      description = '市场处于震荡整理阶段，多空平衡，等待方向选择';
+    } else if (sentimentScore >= 30 && sentimentScore < 50) {
+      regime = 'correction';
+      description = '市场处于回调阶段，关注低吸机会';
+    } else if (volatility >= 70) {
+      regime = 'volatile';
+      description = '市场处于高波动阶段，谨慎操作，控制仓位';
+    } else {
+      regime = 'low_activity';
+      description = '市场活跃度较低，观望为主';
+    }
+
+    console.log('[StrategyGenerator] 市场阶段检测:', regime);
+    return { marketRegime: regime, marketRegimeDescription: description };
+  }
+
+  // 步骤 4: 事件链因果映射
+  private mapEventChainToStrategy(snapshot: MarketSnapshot, analysis: AnalysisResponse): StrategyReport['eventChainMap'] {
+    const eventChainMap: StrategyReport['eventChainMap'] = {};
+    const allEvents = [
+      ...(snapshot.events || []),
+      ...(snapshot.realtimeEvents || [])
+    ];
+
+    // 事件影响映射
+    const eventTypeImpacts: Record<string, { impact: 'positive' | 'negative' | 'neutral'; action: any }> = {
+      hotspot_emergence: { impact: 'positive', action: 'accumulate' },
+      volume_spike: { impact: 'positive', action: 'hold' },
+      price_breakout: { impact: 'positive', action: 'hold' },
+      news_trigger: { impact: 'neutral', action: 'hold' },
+      sector_rotation: { impact: 'positive', action: 'accumulate' }
+    };
+
+    allEvents.forEach(event => {
+      const eventType = event.type;
+      if (!eventChainMap[eventType]) {
+        eventChainMap[eventType] = [];
+      }
+
+      const impactedSectors = analysis.hotSpots.map(h => h.name).slice(0, 3);
+      const impactConfig = eventTypeImpacts[eventType] || { impact: 'neutral', action: 'hold' };
+
+      eventChainMap[eventType].push({
+        impact: impactConfig.impact,
+        affectedSectors: impactedSectors,
+        recommendedAction: impactConfig.action
+      });
+    });
+
+    console.log('[StrategyGenerator] 事件链因果映射完成');
+    return eventChainMap;
+  }
+
+  // 步骤 5: 计算多维度机会评分
+  private calculateOpportunityScores(
+    analysis: AnalysisResponse,
+    snapshot: MarketSnapshot
+  ): OpportunityScore[] {
+    const opportunityScores: OpportunityScore[] = [];
+
+    analysis.hotSpots.forEach(hotspot => {
+      // 事件共振评分
+      const eventResonanceScore = hotspot.relatedEvents && hotspot.relatedEvents.length > 0 
+        ? Math.min(100, 50 + hotspot.relatedEvents.length * 10)
+        : 50;
+
+      // 资金活跃度评分
+      const capitalActivityScore = hotspot.capitalActivity || 60;
+
+      // 热点持续性评分
+      const sustainabilityScore = hotspot.sustainabilityScore || 50;
+
+      // 板块强度评分
+      const sectorStrengthScore = hotspot.strength;
+
+      // 估值评分（简化版）
+      const valuationScore = hotspot.momentumScore && hotspot.momentumScore > 70 
+        ? Math.max(40, 80 - (hotspot.momentumScore - 70))
+        : 60;
+
+      // 综合评分
+      const totalScore = Math.round(
+        eventResonanceScore * 0.25 +
+        capitalActivityScore * 0.20 +
+        sustainabilityScore * 0.25 +
+        sectorStrengthScore * 0.20 +
+        valuationScore * 0.10
+      );
+
+      // 盈亏比估算
+      const riskRewardRatio = sustainabilityScore >= 70 ? 2.5 : sustainabilityScore >= 50 ? 2.0 : 1.5;
+
+      opportunityScores.push({
+        sectorName: hotspot.name,
+        totalScore,
+        eventResonanceScore,
+        capitalActivityScore,
+        sustainabilityScore,
+        sectorStrengthScore,
+        valuationScore,
+        riskRewardRatio
+      });
+    });
+
+    // 按总分排序
+    opportunityScores.sort((a, b) => b.totalScore - a.totalScore);
+    console.log('[StrategyGenerator] 多维度机会评分完成');
+    return opportunityScores;
+  }
+
+  // 步骤 6: 生成动态仓位规划
+  private generateDynamicPositionPlan(
+    candidates: Candidate[],
+    riskMapping: RiskMapping
+  ): PositionAllocation & { reasoning: string; contingencyPlan: string } {
+    const totalScore = candidates.reduce((sum, c) => sum + (c.score || 50), 0);
+    const totalPosition = riskMapping.maxPosition;
+    const individualAllocations: { [code: string]: number } = {};
+    const sectorAllocations: { [sector: string]: number } = {};
+
+    candidates.forEach(candidate => {
+      const weight = (candidate.score || 50) / totalScore;
+      const allocation = Math.min(
+        riskMapping.singleStockMaxPosition,
+        Math.round((totalPosition * weight) * 100) / 100
+      );
+      
+      candidate.allocation = allocation;
+      individualAllocations[candidate.code] = allocation;
+      sectorAllocations[candidate.sector] = (sectorAllocations[candidate.sector] || 0) + allocation;
+    });
+
+    const cashReserve = 100 - totalPosition;
+
+    const reasoning = `基于${riskMapping.riskLevel}风险等级，总仓位控制在${totalPosition}%，单票仓位不超过${riskMapping.singleStockMaxPosition}%。`;
+    
+    const contingencyPlan = `若市场波动加剧，风险等级提升，总仓位降低至${Math.max(20, totalPosition - 20)}%；若热点持续性超预期，可适当加仓至${Math.min(100, totalPosition + 10)}%。`;
+
+    console.log('[StrategyGenerator] 动态仓位规划生成完成');
+    return {
+      totalPosition,
+      sectorAllocations,
+      individualAllocations,
+      cashReserve,
+      reasoning,
+      contingencyPlan
+    };
+  }
+
+  // 步骤 7: 策略优先级排序（实现5种策略模式）
+  private prioritizeStrategies(
+    marketRegime: MarketRegime,
+    riskMapping: RiskMapping,
+    opportunityScores: OpportunityScore[],
+    analysis: AnalysisResponse
+  ): { dominantStrategy: SubStrategy; secondaryStrategies: SubStrategy[] } {
+    const allStrategies: SubStrategy[] = [];
+
+    // 策略模式配置
+    const strategyConfigs: Record<StrategyMode, { name: string; description: string }> = {
+      trend: {
+        name: '趋势策略',
+        description: '追踪强势板块龙头，顺势而为，持有为主'
+      },
+      relay: {
+        name: '接力策略',
+        description: '在板块轮动中捕捉接力机会，灵活切换'
+      },
+      rotation_low_suction: {
+        name: '低吸轮动策略',
+        description: '等待回调机会，轮动布局，波段操作'
+      },
+      defensive: {
+        name: '防守策略',
+        description: '控制仓位，精选低风险标的，安全第一'
+      },
+      observation: {
+        name: '观察策略',
+        description: '轻仓或空仓观望，等待明确信号'
+      }
+    };
+
+    // 根据市场阶段和风险等级计算各策略的适用性得分
+    Object.keys(strategyConfigs).forEach(modeStr => {
+      const mode = modeStr as StrategyMode;
+      let baseScore = 50;
+      let suitability: 'high' | 'medium' | 'low' = 'medium';
+
+      // 根据市场阶段调整得分
+      switch (marketRegime) {
+        case 'trending_bullish':
+          if (mode === 'trend') { baseScore += 30; suitability = 'high'; }
+          if (mode === 'relay') { baseScore += 15; suitability = 'medium'; }
+          if (mode === 'defensive') { baseScore -= 20; suitability = 'low'; }
+          break;
+        case 'rally':
+          if (mode === 'relay') { baseScore += 25; suitability = 'high'; }
+          if (mode === 'rotation_low_suction') { baseScore += 20; suitability = 'medium'; }
+          break;
+        case 'consolidation':
+          if (mode === 'rotation_low_suction') { baseScore += 25; suitability = 'high'; }
+          if (mode === 'relay') { baseScore += 15; suitability = 'medium'; }
+          break;
+        case 'trending_bearish':
+        case 'volatile':
+          if (mode === 'defensive') { baseScore += 30; suitability = 'high'; }
+          if (mode === 'observation') { baseScore += 20; suitability = 'medium'; }
+          break;
+        default:
+          if (mode === 'observation') { baseScore += 15; suitability = 'medium'; }
+      }
+
+      // 根据风险等级调整
+      if (riskMapping.riskLevel === 'low' && (mode === 'trend' || mode === 'relay')) {
+        baseScore += 15;
+      }
+      if (riskMapping.riskLevel === 'high' && (mode === 'defensive' || mode === 'observation')) {
+        baseScore += 15;
+      }
+
+      allStrategies.push({
+        id: mode,
+        mode,
+        name: strategyConfigs[mode].name,
+        description: strategyConfigs[mode].description,
+        priority: 0,
+        score: Math.max(0, Math.min(100, baseScore)),
+        rationale: this.generateStrategyRationale(mode, marketRegime, riskMapping),
+        suitability
+      });
+    });
+
+    // 排序并分配优先级
+    allStrategies.sort((a, b) => b.score - a.score);
+    allStrategies.forEach((strategy, index) => {
+      strategy.priority = index + 1;
+    });
+
+    const dominantStrategy = allStrategies[0];
+    const secondaryStrategies = allStrategies.slice(1, 4);
+
+    console.log('[StrategyGenerator] 策略优先级排序完成');
+    return { dominantStrategy, secondaryStrategies };
+  }
+
+  // 生成策略合理性说明
+  private generateStrategyRationale(
+    mode: StrategyMode,
+    marketRegime: MarketRegime,
+    riskMapping: RiskMapping
+  ): string {
+    const rationales: Record<StrategyMode, string> = {
+      trend: `当前${this.getRegimeDescription(marketRegime)}，风险等级${riskMapping.riskLevel}，适合顺势而为，把握主升浪机会。`,
+      relay: `市场存在轮动特征，通过接力策略捕捉板块切换机会，提高资金效率。`,
+      rotation_low_suction: `震荡市场环境下，避免追高，等待回调机会进行轮动布局。`,
+      defensive: `考虑到市场风险较高，优先控制风险，精选低波动标的，稳健为主。`,
+      observation: `市场方向不明，保持观望，等待更明确的信号出现再行动。`
+    };
+    return rationales[mode];
+  }
+
+  private getRegimeDescription(regime: MarketRegime): string {
+    const descriptions: Record<MarketRegime, string> = {
+      trending_bullish: '趋势上涨',
+      trending_bearish: '趋势下跌',
+      rally: '反弹',
+      consolidation: '震荡整理',
+      correction: '回调',
+      volatile: '高波动',
+      low_activity: '低活跃度'
+    };
+    return descriptions[regime];
+  }
+
+  // 步骤 8: 生成深度结构化策略报告
+  private generateStrategyReport(
+    dominantStrategy: SubStrategy,
+    secondaryStrategies: SubStrategy[],
+    marketRegime: MarketRegime,
+    marketRegimeDescription: string,
+    riskMapping: RiskMapping,
+    opportunityScores: OpportunityScore[],
+    eventChainMap: StrategyReport['eventChainMap'],
+    dynamicPositionPlan: PositionAllocation & { reasoning: string; contingencyPlan: string },
+    snapshot: MarketSnapshot,
+    analysis: AnalysisResponse,
+    candidates: Candidate[]
+  ): StrategyReport {
+    // 生成兼容的基础策略响应
+    const basicStrategy = this.generateBasicStrategyResponse(
+      analysis,
+      { riskLevel: riskMapping.riskLevel, volatilityScore: riskMapping.riskBudget },
+      candidates,
+      snapshot,
+      dominantStrategy.mode
+    );
+
+    // 策略说明
+    const strategyExplanation = {
+      marketCausalityUnderstanding: this.generateMarketCausalityUnderstanding(analysis, marketRegime, eventChainMap),
+      riskControlLogic: this.generateRiskControlLogic(riskMapping, dynamicPositionPlan),
+      opportunityRationale: this.generateOpportunityRationale(opportunityScores),
+      strategySwitchingRules: this.generateStrategySwitchingRules(dominantStrategy, secondaryStrategies)
+    };
+
+    console.log('[StrategyGenerator] 深度策略报告生成完成');
+    return {
+      dominantStrategy,
+      secondaryStrategies,
+      marketRegime,
+      marketRegimeDescription,
+      riskMapping,
+      opportunityScores,
+      eventChainMap,
+      dynamicPositionPlan,
+      strategyExplanation,
+      // 兼容基础响应
+      ...basicStrategy
+    };
+  }
+
+  // 生成市场因果理解
+  private generateMarketCausalityUnderstanding(
+    analysis: AnalysisResponse,
+    marketRegime: MarketRegime,
+    eventChainMap: StrategyReport['eventChainMap']
+  ): string {
+    const mainHotspot = analysis.hotSpots[0];
+    const eventCount = Object.keys(eventChainMap).length;
+    
+    let understanding = `当前市场处于${this.getRegimeDescription(marketRegime)}阶段。`;
+    if (mainHotspot) {
+      understanding += `${mainHotspot.name}是主线热点，强度${mainHotspot.strength}分，持续性${mainHotspot.sustainabilityScore}分。`;
+    }
+    if (eventCount > 0) {
+      understanding += `${eventCount}个事件驱动市场，关注事件共振效应。`;
+    }
+    return understanding;
+  }
+
+  // 生成风险控制逻辑
+  private generateRiskControlLogic(
+    riskMapping: RiskMapping,
+    dynamicPositionPlan: PositionAllocation & { reasoning: string; contingencyPlan: string }
+  ): string {
+    return `风险等级${riskMapping.riskLevel}，总仓位控制在${riskMapping.maxPosition}%，单票仓位不超过${riskMapping.singleStockMaxPosition}%，止损幅度${riskMapping.stopLossPercentage}%。${dynamicPositionPlan.reasoning}应急预案：${dynamicPositionPlan.contingencyPlan}`;
+  }
+
+  // 生成机会原理
+  private generateOpportunityRationale(opportunityScores: OpportunityScore[]): string {
+    const topOpportunity = opportunityScores[0];
+    if (!topOpportunity) return '暂无明确机会';
+    
+    return `${topOpportunity.sectorName}综合机会评分${topOpportunity.totalScore}分，其中事件共振${topOpportunity.eventResonanceScore}分，资金活跃${topOpportunity.capitalActivityScore}分，持续性${topOpportunity.sustainabilityScore}分，板块强度${topOpportunity.sectorStrengthScore}分，估值${topOpportunity.valuationScore}分，盈亏比${topOpportunity.riskRewardRatio}:1。`;
+  }
+
+  // 生成策略切换规则
+  private generateStrategySwitchingRules(
+    dominantStrategy: SubStrategy,
+    secondaryStrategies: SubStrategy[]
+  ): string {
+    return `当前主策略：${dominantStrategy.name}。切换条件：1) 若热点持续性下降超过20分，切换至${secondaryStrategies[0]?.name || '防守策略'}；2) 若风险等级提升，切换至防御策略；3) 若市场出现新的强势热点，灵活调整。`;
+  }
+
+  // 生成兼容的基础策略响应
+  private generateBasicStrategyResponse(
+    analysis: AnalysisResponse,
+    riskAssessment: { riskLevel: 'low' | 'medium' | 'high'; volatilityScore: number },
+    candidates: Candidate[],
+    snapshot: MarketSnapshot,
+    strategyMode: StrategyMode
+  ): StrategyResponse {
+    // 策略类型映射
+    const strategyTypeMap: Record<StrategyMode, 'aggressive' | 'moderate' | 'conservative'> = {
+      trend: 'aggressive',
+      relay: 'moderate',
+      rotation_low_suction: 'moderate',
+      defensive: 'conservative',
+      observation: 'conservative'
+    };
+
+    const strategyType = strategyTypeMap[strategyMode];
+    
+    // 生成入场点
+    const entryPoints = this.calculateEntryPoints(candidates, snapshot, strategyType);
+    
+    // 生成止损止盈
+    const stopLoss = this.setStopLossTakeProfit(candidates, snapshot, strategyType);
+    
+    // 生成市场观点
+    const marketView = this.generateMarketView(analysis, riskAssessment);
+    
+    // 生成风控措施
+    const riskControls = this.generateRiskControls(riskAssessment, strategyType);
+    
+    // 生成择时指标
+    const timingIndicators = this.generateTimingIndicators(analysis, riskAssessment);
+
+    let strategyDescription = '';
+    switch (strategyType) {
+      case 'aggressive':
+        strategyDescription = '积极进取型策略：精选优质龙头，把握主升浪机会，仓位偏积极';
+        break;
+      case 'moderate':
+        strategyDescription = '稳健平衡型策略：均衡配置，控制风险，追求稳健收益';
+        break;
+      case 'conservative':
+        strategyDescription = '保守防御型策略：精选低风险标的，严格控制仓位，安全第一';
+        break;
+    }
+
+    if (analysis.hotSpots.length > 0) {
+      const topSectors = analysis.hotSpots.slice(0, 2).map(s => s.name).join('和');
+      strategyDescription += `，重点关注${topSectors}等强势板块`;
+    }
+
+    return {
+      recommendedStrategy: strategyDescription,
+      strategyType,
+      candidates,
+      entryPoints,
+      stopLoss,
+      positionAllocation: {
+        totalPosition: candidates.reduce((sum, c) => sum + (c.allocation || 0), 0),
+        sectorAllocations: {},
+        individualAllocations: candidates.reduce((acc, c) => { acc[c.code] = c.allocation || 0; return acc; }, {}),
+        cashReserve: 100 - candidates.reduce((sum, c) => sum + (c.allocation || 0), 0)
+      },
+      marketView,
+      riskControls,
+      timingIndicators
+    };
+  }
+
+  // 辅助方法：选择候选标的（结合机会评分）
+  private selectCandidates(
+    snapshot: MarketSnapshot,
+    analysis: AnalysisResponse,
+    riskAssessment: RiskResponse,
+    opportunityScores: OpportunityScore[]
   ): Candidate[] {
     const { stocks } = snapshot.rawData;
     const { hotSpots, leaderStocks } = analysis;
 
-    // 建立板块评分映射
-    const sectorScores = new Map<string, number>();
-    hotSpots.forEach(spot => {
-      sectorScores.set(spot.name, spot.strength);
-    });
+    // 建立板块机会评分映射
+    const sectorOpportunityMap = new Map(
+      opportunityScores.map(os => [os.sectorName, os])
+    );
 
-    // 筛选和评分候选股票
     const candidates: Candidate[] = [];
-    
+
     // 首先优先处理龙头股
     leaderStocks.forEach(leader => {
       const stock = stocks.find(s => s.code === leader.code);
       if (stock) {
-        const score = this.calculateCandidateScore(stock, analysis, riskAssessment, sectorScores);
+        const sectorName = this.findSectorForStock(stock, snapshot);
+        const sectorOpportunity = sectorOpportunityMap.get(sectorName);
+        
+        const score = Math.round(
+          (sectorOpportunity?.totalScore || 50) * 0.6 +
+          (leader.leadingScore || 50) * 0.4
+        );
+
         candidates.push({
           code: stock.code,
           name: stock.name,
-          sector: this.findSectorForStock(stock, snapshot),
+          sector: sectorName,
           score,
-          rationale: this.generateCandidateRationale(stock, analysis, score),
+          rationale: `${stock.name}是${sectorName}板块龙头，综合机会评分${score}分`,
           momentumScore: Math.max(0, Math.min(100, 50 + stock.changePercent * 5)),
-          valuationScore: this.calculateValuationScore(stock),
+          valuationScore: sectorOpportunity?.valuationScore || 60,
           riskScore: this.calculateRiskScore(stock, riskAssessment),
           leaderScore: leader.leadingScore
         });
@@ -161,16 +696,19 @@ export class StrategyGeneratorAgent {
     // 补充其他优质股票
     stocks.filter(s => s.isLeader || s.changePercent > 3).forEach(stock => {
       if (!candidates.find(c => c.code === stock.code)) {
-        const score = this.calculateCandidateScore(stock, analysis, riskAssessment, sectorScores);
-        if (score >= 50) {
+        const sectorName = this.findSectorForStock(stock, snapshot);
+        const sectorOpportunity = sectorOpportunityMap.get(sectorName);
+        const score = sectorOpportunity ? Math.round(sectorOpportunity.totalScore * 0.8) : 50;
+        
+        if (score >= 45) {
           candidates.push({
             code: stock.code,
             name: stock.name,
-            sector: this.findSectorForStock(stock, snapshot),
+            sector: sectorName,
             score,
-            rationale: this.generateCandidateRationale(stock, analysis, score),
+            rationale: `${stock.name}来自${sectorName}板块，综合评分${score}分`,
             momentumScore: Math.max(0, Math.min(100, 50 + stock.changePercent * 5)),
-            valuationScore: this.calculateValuationScore(stock),
+            valuationScore: sectorOpportunity?.valuationScore || 60,
             riskScore: this.calculateRiskScore(stock, riskAssessment),
             leaderScore: stock.isLeader ? 70 : 50
           });
@@ -183,70 +721,7 @@ export class StrategyGeneratorAgent {
     return candidates.slice(0, this.config.maxCandidates);
   }
 
-  // 计算候选标的综合评分
-  private calculateCandidateScore(
-    stock: any,
-    analysis: AnalysisResponse,
-    riskAssessment: RiskResponse,
-    sectorScores: Map<string, number>
-  ): number {
-    let score = 0;
-    
-    // 1. 价格变动评分 (30%)
-    const changeScore = Math.max(0, Math.min(100, 50 + stock.changePercent * 3));
-    score += changeScore * 0.3;
-
-    // 2. 板块强度评分 (30%)
-    const sector = this.findSectorForStock(stock, { rawData: { sectors: analysis.hotSpots.map(h => ({ name: h.name, changePercent: 0, volume: 0, leaderStocks: [] })) } } as any);
-    const sectorScore = sectorScores.get(sector) || 50;
-    score += sectorScore * 0.3;
-
-    // 3. 龙头评分 (20%)
-    if (stock.isLeader) {
-      const leader = analysis.leaderStocks.find(l => l.code === stock.code);
-      score += (leader?.leadingScore || 70) * 0.2;
-    } else {
-      score += 50 * 0.2;
-    }
-
-    // 4. 风险调整 (20%)
-    const riskAdjustment = riskAssessment.riskLevel === 'high' ? -10 : riskAssessment.riskLevel === 'medium' ? 0 : 5;
-    score += (50 + riskAdjustment) * 0.2;
-
-    return Math.round(Math.max(0, Math.min(100, score)));
-  }
-
-  // 计算估值评分
-  private calculateValuationScore(stock: any): number {
-    let score = 50;
-    // 简化估值逻辑，基于价格变动判断
-    if (stock.changePercent > 0 && stock.changePercent < 5) {
-      score += 20; // 温和上涨，估值相对合理
-    } else if (stock.changePercent > 8) {
-      score -= 10; // 短期涨幅过大，估值可能偏高
-    }
-    return Math.max(0, Math.min(100, score));
-  }
-
-  // 计算风险评分
-  private calculateRiskScore(stock: any, riskAssessment: RiskResponse): number {
-    let score = 50;
-    const volatility = riskAssessment.volatilityScore;
-    
-    if (volatility > 70) {
-      score -= 15; // 高波动环境，风险增加
-    } else if (volatility < 40) {
-      score += 10; // 低波动环境，风险降低
-    }
-
-    if (Math.abs(stock.changePercent) > 7) {
-      score -= 10; // 大幅波动，风险较高
-    }
-
-    return Math.max(0, Math.min(100, score));
-  }
-
-  // 查找股票所属板块
+  // 辅助方法：查找股票所属板块
   private findSectorForStock(stock: any, snapshot: MarketSnapshot): string {
     if (stock.sectorId) {
       const sector = snapshot.rawData.sectors.find(s => s.id === stock.sectorId);
@@ -255,31 +730,25 @@ export class StrategyGeneratorAgent {
     return '其他';
   }
 
-  // 生成候选标的理由
-  private generateCandidateRationale(stock: any, analysis: AnalysisResponse, score: number): string {
-    const parts: string[] = [];
+  // 辅助方法：计算风险评分
+  private calculateRiskScore(stock: any, riskAssessment: { riskLevel: 'low' | 'medium' | 'high'; volatilityScore: number }): number {
+    let score = 50;
+    const volatility = riskAssessment.volatilityScore;
     
-    if (stock.isLeader) {
-      const leader = analysis.leaderStocks.find(l => l.code === stock.code);
-      parts.push(`${stock.name}是${this.findSectorForStock(stock, { rawData: { sectors: analysis.hotSpots.map(h => ({ name: h.name, changePercent: 0, volume: 0, leaderStocks: [] })) } } as any)}板块龙头`);
+    if (volatility > 70) {
+      score -= 15;
+    } else if (volatility < 40) {
+      score += 10;
     }
-    
-    if (stock.changePercent > 0) {
-      parts.push(`今日强势上涨${stock.changePercent.toFixed(2)}%`);
-    } else {
-      parts.push(`今日调整${Math.abs(stock.changePercent).toFixed(2)}%`);
+
+    if (Math.abs(stock.changePercent) > 7) {
+      score -= 10;
     }
-    
-    if (score >= 80) {
-      parts.push('综合评分优秀，建议重点关注');
-    } else if (score >= 60) {
-      parts.push('综合评分良好，可适当关注');
-    }
-    
-    return parts.join('；');
+
+    return Math.max(0, Math.min(100, score));
   }
 
-  // 计算入场点位
+  // 辅助方法：计算入场点
   private calculateEntryPoints(
     candidates: Candidate[],
     snapshot: MarketSnapshot,
@@ -330,7 +799,7 @@ export class StrategyGeneratorAgent {
     return entryPoints;
   }
 
-  // 设置止损止盈策略
+  // 辅助方法：设置止损止盈
   private setStopLossTakeProfit(
     candidates: Candidate[],
     snapshot: MarketSnapshot,
@@ -339,7 +808,6 @@ export class StrategyGeneratorAgent {
     const stopLossStrategies: StopLoss[] = [];
     const { stocks } = snapshot.rawData;
 
-    // 根据策略类型调整止损止盈幅度
     const stopLossPercent = strategyType === 'aggressive' ? 12 : strategyType === 'moderate' ? 8 : 5;
     const takeProfitPercent = strategyType === 'aggressive' ? 25 : strategyType === 'moderate' ? 18 : 12;
 
@@ -365,112 +833,8 @@ export class StrategyGeneratorAgent {
     return stopLossStrategies;
   }
 
-  // 配置仓位
-  private allocatePositions(
-    candidates: Candidate[],
-    riskAssessment: RiskResponse,
-    strategyType: 'aggressive' | 'moderate' | 'conservative'
-  ): PositionAllocation {
-    const totalScore = candidates.reduce((sum, c) => sum + c.score, 0);
-    
-    // 根据风险级别确定总仓位
-    let totalPosition: number;
-    switch (riskAssessment.riskLevel) {
-      case 'low':
-        totalPosition = Math.min(this.config.maxTotalPosition, 75);
-        break;
-      case 'medium':
-        totalPosition = Math.min(this.config.maxTotalPosition, 55);
-        break;
-      case 'high':
-        totalPosition = Math.min(this.config.maxTotalPosition, 35);
-        break;
-      default:
-        totalPosition = 50;
-    }
-
-    // 根据策略类型调整
-    if (strategyType === 'aggressive') totalPosition = Math.min(100, totalPosition + 10);
-    if (strategyType === 'conservative') totalPosition = Math.max(20, totalPosition - 15);
-
-    const sectorAllocations: { [sector: string]: number } = {};
-    const individualAllocations: { [code: string]: number } = {};
-
-    candidates.forEach((candidate, index) => {
-      const weight = candidate.score / totalScore;
-      const allocation = Math.min(
-        this.config.positionLimitPerStock,
-        Math.round((totalPosition * weight) * 100) / 100
-      );
-      
-      candidate.allocation = allocation;
-      individualAllocations[candidate.code] = allocation;
-
-      sectorAllocations[candidate.sector] = (sectorAllocations[candidate.sector] || 0) + allocation;
-    });
-
-    const cashReserve = 100 - totalPosition;
-
-    return {
-      totalPosition: Math.round(totalPosition * 100) / 100,
-      sectorAllocations,
-      individualAllocations,
-      cashReserve: Math.round(cashReserve * 100) / 100
-    };
-  }
-
-  // 整合最终策略
-  private finalizeStrategy(
-    analysis: AnalysisResponse,
-    riskAssessment: RiskResponse,
-    strategyType: 'aggressive' | 'moderate' | 'conservative',
-    candidates: Candidate[],
-    entryPoints: EntryPoint[],
-    stopLossStrategies: StopLoss[],
-    positionAllocation: PositionAllocation
-  ): StrategyResponse {
-    // 生成市场观点
-    const marketView = this.generateMarketView(analysis, riskAssessment);
-    
-    // 生成风控措施
-    const riskControls = this.generateRiskControls(riskAssessment, strategyType);
-    
-    // 生成择时指标
-    const timingIndicators = this.generateTimingIndicators(analysis, riskAssessment);
-
-    let strategyDescription = '';
-    switch (strategyType) {
-      case 'aggressive':
-        strategyDescription = '积极进取型策略：精选优质龙头，把握主升浪机会，仓位偏积极';
-        break;
-      case 'moderate':
-        strategyDescription = '稳健平衡型策略：均衡配置，控制风险，追求稳健收益';
-        break;
-      case 'conservative':
-        strategyDescription = '保守防御型策略：精选低风险标的，严格控制仓位，安全第一';
-        break;
-    }
-
-    if (analysis.hotSpots.length > 0) {
-      const topSectors = analysis.hotSpots.slice(0, 2).map(s => s.name).join('和');
-      strategyDescription += `，重点关注${topSectors}等强势板块`;
-    }
-
-    return {
-      recommendedStrategy: strategyDescription,
-      strategyType,
-      candidates,
-      entryPoints,
-      stopLoss: stopLossStrategies,
-      positionAllocation,
-      marketView,
-      riskControls,
-      timingIndicators
-    };
-  }
-
-  // 生成市场观点
-  private generateMarketView(analysis: AnalysisResponse, riskAssessment: RiskResponse): string {
+  // 辅助方法：生成市场观点
+  private generateMarketView(analysis: AnalysisResponse, riskAssessment: { riskLevel: 'low' | 'medium' | 'high'; volatilityScore: number }): string {
     const views: string[] = [];
     
     if (analysis.sentimentScore >= 70) {
@@ -494,9 +858,9 @@ export class StrategyGeneratorAgent {
     return views.join('；');
   }
 
-  // 生成风控措施
+  // 辅助方法：生成风控措施
   private generateRiskControls(
-    riskAssessment: RiskResponse,
+    riskAssessment: { riskLevel: 'low' | 'medium' | 'high'; volatilityScore: number },
     strategyType: 'aggressive' | 'moderate' | 'conservative'
   ): string[] {
     const controls: string[] = [];
@@ -513,24 +877,20 @@ export class StrategyGeneratorAgent {
       controls.push('可适当积极布局，但仍需保持风控意识');
     }
 
-    if (riskAssessment.alerts.length > 0) {
-      controls.push('关注风险预警信号，及时调整策略');
-    }
+    controls.push('关注事件驱动因素，及时调整策略');
 
     return controls;
   }
 
-  // 生成择时指标
+  // 辅助方法：生成择时指标
   private generateTimingIndicators(
     analysis: AnalysisResponse,
-    riskAssessment: RiskResponse
+    riskAssessment: { riskLevel: 'low' | 'medium' | 'high'; volatilityScore: number }
   ): { marketTiming: number; sectorTiming: { [sector: string]: number } } {
     let marketTiming = 50;
     
-    // 基于情绪评分
     marketTiming += (analysis.sentimentScore - 50) * 0.4;
     
-    // 基于风险评分
     const riskAdjustment = riskAssessment.riskLevel === 'low' ? 10 : riskAssessment.riskLevel === 'high' ? -15 : 0;
     marketTiming += riskAdjustment;
 
@@ -547,4 +907,3 @@ export class StrategyGeneratorAgent {
     };
   }
 }
-

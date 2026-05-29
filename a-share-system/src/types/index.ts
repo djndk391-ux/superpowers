@@ -355,3 +355,114 @@ export interface AnalysisState {
   decision: TradingDecision | null;
   isAnalyzing: boolean;
 }
+
+// ==================== 深度优化新增类型定义 ====================
+
+// 市场阶段类型
+export type MarketRegime = 
+  | 'trending_bullish'      // 趋势上涨
+  | 'trending_bearish'      // 趋势下跌
+  | 'rally'                 // 反弹
+  | 'consolidation'         // 震荡整理
+  | 'correction'            // 回调
+  | 'volatile'              // 高波动
+  | 'low_activity';         // 低活跃度
+
+// 策略模式类型
+export type StrategyMode = 
+  | 'trend'                 // 趋势策略
+  | 'relay'                 // 接力策略
+  | 'rotation_low_suction'  // 低吸轮动策略
+  | 'defensive'             // 防守策略
+  | 'observation';          // 观察策略
+
+// 机会评分维度
+export interface OpportunityScore {
+  sectorName: string;
+  totalScore: number;
+  eventResonanceScore: number;   // 事件共振评分
+  capitalActivityScore: number;  // 资金活跃度评分
+  sustainabilityScore: number;   // 热点持续性评分
+  sectorStrengthScore: number;   // 板块强度评分
+  valuationScore: number;        // 估值评分
+  riskRewardRatio: number;       // 盈亏比
+}
+
+// 风险映射
+export interface RiskMapping {
+  riskLevel: 'low' | 'medium' | 'high';
+  maxPosition: number;
+  singleStockMaxPosition: number;
+  stopLossPercentage: number;
+  takeProfitMultiple: number;
+  recommendedMode: StrategyMode;
+  riskBudget: number;
+}
+
+// 子策略
+export interface SubStrategy {
+  id: string;
+  mode: StrategyMode;
+  name: string;
+  description: string;
+  priority: number;
+  score: number;
+  rationale: string;
+  suitability: 'high' | 'medium' | 'low';
+}
+
+// 深度策略报告
+export interface StrategyReport {
+  // 主策略
+  dominantStrategy: SubStrategy;
+  
+  // 备选策略
+  secondaryStrategies: SubStrategy[];
+  
+  // 市场阶段判断
+  marketRegime: MarketRegime;
+  marketRegimeDescription: string;
+  
+  // 风险映射
+  riskMapping: RiskMapping;
+  
+  // 机会评分
+  opportunityScores: OpportunityScore[];
+  
+  // 事件因果映射
+  eventChainMap: {
+    [eventType: string]: {
+      impact: 'positive' | 'negative' | 'neutral';
+      affectedSectors: string[];
+      recommendedAction: 'hold' | 'accumulate' | 'reduce' | 'avoid';
+    }[];
+  };
+  
+  // 动态仓位规划
+  dynamicPositionPlan: PositionAllocation & {
+    reasoning: string;
+    contingencyPlan: string;
+  };
+  
+  // 策略说明
+  strategyExplanation: {
+    marketCausalityUnderstanding: string;
+    riskControlLogic: string;
+    opportunityRationale: string;
+    strategySwitchingRules: string;
+  };
+  
+  // 基础策略响应（保持兼容）
+  recommendedStrategy: string;
+  strategyType: 'aggressive' | 'moderate' | 'conservative';
+  candidates: Candidate[];
+  entryPoints: EntryPoint[];
+  stopLoss: StopLoss[];
+  positionAllocation?: PositionAllocation;
+  marketView?: string;
+  riskControls?: string[];
+  timingIndicators?: {
+    marketTiming: number;
+    sectorTiming: { [sector: string]: number };
+  };
+}
