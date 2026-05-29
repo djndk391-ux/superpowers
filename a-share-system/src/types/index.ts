@@ -270,6 +270,12 @@ export interface Candidate {
   sector: string;
   score: number;
   rationale: string;
+  // 新增字段
+  momentumScore?: number;         // 动量评分
+  valuationScore?: number;        // 估值评分
+  riskScore?: number;             // 风险评分
+  leaderScore?: number;           // 龙头评分
+  allocation?: number;            // 建议配置比例(%)
 }
 
 // 入场点
@@ -277,6 +283,10 @@ export interface EntryPoint {
   type: 'aggressive' | 'moderate' | 'conservative';
   price: number;
   description: string;
+  // 新增字段
+  targetStock?: string;           // 目标股票
+  positionSize?: number;          // 仓位大小(%)
+  confidence?: number;            // 置信度(0-100)
 }
 
 // 止损止盈
@@ -284,14 +294,40 @@ export interface StopLoss {
   stopLossPrice: number;
   takeProfitPrice: number;
   description: string;
+  // 新增字段
+  targetStock?: string;           // 目标股票
+  stopLossPercent?: number;       // 止损幅度(%)
+  takeProfitPercent?: number;     // 止盈幅度(%)
+  riskRewardRatio?: number;       // 盈亏比
 }
 
-// 策略响应
+// 仓位配置
+export interface PositionAllocation {
+  totalPosition: number;          // 总仓位(%)
+  sectorAllocations: {
+    [sector: string]: number;     // 各板块配置比例
+  };
+  individualAllocations: {
+    [code: string]: number;       // 个股配置比例
+  };
+  cashReserve: number;            // 现金储备(%)
+}
+
+// 策略响应（增强版）
 export interface StrategyResponse {
   recommendedStrategy: string;
+  strategyType: 'aggressive' | 'moderate' | 'conservative';
   candidates: Candidate[];
   entryPoints: EntryPoint[];
   stopLoss: StopLoss[];
+  // 新增字段
+  positionAllocation?: PositionAllocation;  // 仓位配置
+  marketView?: string;                       // 市场观点
+  riskControls?: string[];                   // 风控措施
+  timingIndicators?: {                      // 择时指标
+    marketTiming: number;     // 市场择时评分
+    sectorTiming: { [sector: string]: number };  // 板块择时评分
+  };
 }
 
 // 最终交易决策

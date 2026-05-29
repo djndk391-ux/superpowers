@@ -3,12 +3,12 @@ import { useStore } from '@/store/useStore';
 import { AgentName, MarketSnapshot } from '@/types';
 import {
   generateMockAnalysis,
-  generateMockStrategy,
   generateMockDecision
 } from '@/utils/mockData';
 import { DataCollectorAgent } from '@/agents/dataCollectorAgent';
 import { MarketAnalystAgent } from '@/agents/marketAnalystAgent';
 import { RiskAssessorAgent } from '@/agents/riskAssessorAgent';
+import { StrategyGeneratorAgent } from '@/agents/strategyGeneratorAgent';
 
 export const useAgentCoordinator = () => {
   const { 
@@ -149,11 +149,58 @@ export const useAgentCoordinator = () => {
         break;
       }
       case 'strategyGenerator': {
-        for (let i = 0; i <= 100; i += 25) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-          updateAgent(agentName, { progress: i });
+        const strategyGenerator = new StrategyGeneratorAgent({}, (progress) => {
+          updateAgent(agentName, { 
+            progress: progress.progressPercent,
+            lastUpdate: new Date().toLocaleTimeString('zh-CN')
+          });
+          console.log(`[StrategyGenerator] ${progress.currentStep}: ${progress.stepDescription} (${progress.progressPercent}%)`);
+        });
+
+        const currentState = useStore.getState().analysisState;
+        
+        if (currentState.marketData && currentState.analysis && currentState.riskAssessment) {
+          // 重建市场快照
+          const snapshot: MarketSnapshot = {
+            id: 'temp-snapshot',
+            timestamp: new Date().toISOString(),
+            version: '1.0',
+            rawData: currentState.marketData,
+            features: [],
+            events: [],
+            collectionTime: new Date().toISOString(),
+            dataSource: 'system',
+            summary: {
+              marketDirection: 'neutral',
+              dominantSector: '',
+              hotStocks: [],
+              sentimentScore: currentState.analysis.sentimentScore,
+              volatilityScore: 50
+            }
+          };
+          
+          result = await strategyGenerator.generateStrategy(
+            snapshot,
+            currentState.analysis,
+            currentState.riskAssessment
+          );
+        } else {
+          // 备用策略
+          result = {
+            recommendedStrategy: '数据不完整，建议等待完整数据后再生成策略',
+            strategyType: 'conservative',
+            candidates: [],
+            entryPoints: [],
+            stopLoss: [],
+            marketView: '数据不足，暂时观望',
+            riskControls: ['保持观望，等待数据完整'],
+            timingIndicators: {
+              marketTiming: 30,
+              sectorTiming: {}
+            }
+          };
         }
-        result = generateMockStrategy();
+        
         console.log('[Data] Strategy generated:', result);
         break;
       }
