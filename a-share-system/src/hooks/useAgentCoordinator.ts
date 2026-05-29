@@ -3,11 +3,12 @@ import { useStore } from '@/store/useStore';
 import { AgentName, MarketSnapshot } from '@/types';
 import {
   generateMockAnalysis,
-  generateMockRiskAssessment,
   generateMockStrategy,
   generateMockDecision
 } from '@/utils/mockData';
 import { DataCollectorAgent } from '@/agents/dataCollectorAgent';
+import { MarketAnalystAgent } from '@/agents/marketAnalystAgent';
+import { RiskAssessorAgent } from '@/agents/riskAssessorAgent';
 
 export const useAgentCoordinator = () => {
   const { 
@@ -54,21 +55,96 @@ export const useAgentCoordinator = () => {
         break;
       }
       case 'marketAnalyst': {
-        // 模拟其他Agent的进度
-        for (let i = 0; i <= 100; i += 25) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-          updateAgent(agentName, { progress: i });
+        const marketAnalyst = new MarketAnalystAgent({}, (progress) => {
+          updateAgent(agentName, { 
+            progress: progress.progressPercent,
+            lastUpdate: new Date().toLocaleTimeString('zh-CN')
+          });
+          console.log(`[MarketAnalyst] ${progress.currentStep}: ${progress.stepDescription} (${progress.progressPercent}%)`);
+        });
+        
+        // 从之前的状态获取MarketSnapshot
+        const currentState = useStore.getState().analysisState;
+        let snapshot: MarketSnapshot;
+        
+        // 如果有完整的snapshot就用，否则尝试从marketData重建
+        if (currentState.marketData) {
+          snapshot = {
+            id: 'temp-snapshot',
+            timestamp: new Date().toISOString(),
+            version: '1.0',
+            rawData: currentState.marketData,
+            features: [],
+            events: [],
+            collectionTime: new Date().toISOString(),
+            dataSource: 'system',
+            summary: {
+              marketDirection: 'neutral',
+              dominantSector: '',
+              hotStocks: [],
+              sentimentScore: 50,
+              volatilityScore: 50
+            }
+          };
+        } else {
+          // 临时方案：使用默认数据
+          result = generateMockAnalysis();
+          console.log('[Data] Fallback to mock analysis (no snapshot available)');
+          break;
         }
-        result = generateMockAnalysis();
+        
+        result = await marketAnalyst.analyzeMarket(snapshot);
         console.log('[Data] Analysis generated:', result);
         break;
       }
       case 'riskAssessor': {
-        for (let i = 0; i <= 100; i += 25) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-          updateAgent(agentName, { progress: i });
+        const riskAssessor = new RiskAssessorAgent({}, (progress) => {
+          updateAgent(agentName, { 
+            progress: progress.progressPercent,
+            lastUpdate: new Date().toLocaleTimeString('zh-CN')
+          });
+          console.log(`[RiskAssessor] ${progress.currentStep}: ${progress.stepDescription} (${progress.progressPercent}%)`);
+        });
+
+        const currentState = useStore.getState().analysisState;
+        
+        if (currentState.marketData && currentState.analysis) {
+          // 重建市场快照
+          const snapshot: MarketSnapshot = {
+            id: 'temp-snapshot',
+            timestamp: new Date().toISOString(),
+            version: '1.0',
+            rawData: currentState.marketData,
+            features: [],
+            events: [],
+            collectionTime: new Date().toISOString(),
+            dataSource: 'system',
+            summary: {
+              marketDirection: 'neutral',
+              dominantSector: '',
+              hotStocks: [],
+              sentimentScore: currentState.analysis.sentimentScore,
+              volatilityScore: 50
+            }
+          };
+          
+          result = await riskAssessor.assessRisk(snapshot, currentState.analysis);
+        } else {
+          // 备用方案
+          result = {
+            riskLevel: 'medium',
+            volatilityScore: 50,
+            riskFactors: ['市场数据不完整，风险评估有限'],
+            alerts: [{
+              id: 'fallback',
+              type: 'info',
+              title: '数据提示',
+              message: '请先完成市场数据收集和分析',
+              timestamp: new Date().toISOString()
+            }]
+          };
         }
-        result = generateMockRiskAssessment();
+        
         console.log('[Data] Risk assessment generated:', result);
         break;
       }
